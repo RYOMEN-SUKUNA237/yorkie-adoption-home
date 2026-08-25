@@ -144,19 +144,23 @@ const DAM_MOORLAND: Parent = {
 };
 
 // ---------------------------------------------------------------------
-// Photography — placeholders. Replace through the dashboard
-// (Puppies → Edit → Upload) before going live.
+// Photography — placeholder Yorkshire Terrier images from Unsplash.
+// Each id was checked by eye before being added; do not swap one in
+// from an id alone. Replace with real photographs through the
+// dashboard (Puppies → Edit → Upload) before going live.
 // ---------------------------------------------------------------------
 
 const PHOTOS = {
-  a: "https://images.unsplash.com/photo-1583512603805-3cc6b41f3edb?w=900&h=1100&fit=crop&auto=format",
-  b: "https://images.unsplash.com/photo-1591160690555-5debfba289f0?w=900&h=1100&fit=crop&auto=format",
-  c: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=900&h=1100&fit=crop&auto=format",
-  d: "https://images.unsplash.com/photo-1596492784531-6e6eb5ea9993?w=900&h=1100&fit=crop&auto=format",
-  e: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=900&h=1100&fit=crop&auto=format",
-  f: "https://images.unsplash.com/photo-1560807707-8cc77767d783?w=900&h=1100&fit=crop&auto=format",
-  g: "https://images.unsplash.com/photo-1601979031925-424e53b6caaa?w=900&h=1100&fit=crop&auto=format",
-  h: "https://images.unsplash.com/photo-1568572933382-74d440642117?w=900&h=1100&fit=crop&auto=format",
+  a: "https://images.unsplash.com/photo-1547482354-89d4259dbc4b?w=900&h=1100&fit=crop&auto=format",
+  b: "https://images.unsplash.com/photo-1526440847959-4e38e7f00b04?w=900&h=1100&fit=crop&auto=format",
+  c: "https://images.unsplash.com/photo-1618760877592-0d80e8b7bd02?w=900&h=1100&fit=crop&auto=format",
+  d: "https://images.unsplash.com/photo-1611170078485-6c1c9ca31936?w=900&h=1100&fit=crop&auto=format",
+  e: "https://images.unsplash.com/photo-1681853134483-4b9801215145?w=900&h=1100&fit=crop&auto=format",
+  f: "https://images.unsplash.com/photo-1546527868-ccb7ee7dfa6a?w=900&h=1100&fit=crop&auto=format",
+  g: "https://images.unsplash.com/photo-1650132392843-cb49902dfcf1?w=900&h=1100&fit=crop&auto=format",
+  h: "https://images.unsplash.com/photo-1612830549030-bfb4b58ccd5f?w=900&h=1100&fit=crop&auto=format",
+  i: "https://images.unsplash.com/photo-1591608971358-f93643d11763?w=900&h=1100&fit=crop&auto=format",
+  j: "https://images.unsplash.com/photo-1659946431902-2786bdd0b39d?w=900&h=1100&fit=crop&auto=format",
 } as const;
 
 // ---------------------------------------------------------------------
@@ -223,7 +227,7 @@ const SEEDS: PuppySeed[] = [
     sex: "male",
     tags: ["cuddly", "easygoing", "sociable"],
     status: "available",
-    photos: [PHOTOS.g, PHOTOS.a],
+    photos: [PHOTOS.i, PHOTOS.a],
     notes:
       "Rowan is the softest puppy in this litter. He greets everyone, tolerates being carried about by children with visible patience, and falls asleep on whoever sits down first. He has none of the wariness the breed is sometimes known for. For a family who want a small dog that is genuinely easy with visitors and grandchildren, he is the obvious choice.",
     sire: SIRE_WHARFEDALE,
@@ -301,7 +305,7 @@ const SEEDS: PuppySeed[] = [
     sex: "female",
     tags: ["playful", "brave", "affectionate"],
     status: "available",
-    photos: [PHOTOS.d, PHOTOS.c],
+    photos: [PHOTOS.j, PHOTOS.c],
     notes:
       "Marigold plays until she falls over, sleeps hard, and starts again. She is brave with new things and recovers quickly when something startles her, which is a temperament we like very much in this breed. She is affectionate without being clingy. A busy household with children old enough to handle a small dog carefully would suit her perfectly.",
     sire: SIRE_BRIGHTWATER,

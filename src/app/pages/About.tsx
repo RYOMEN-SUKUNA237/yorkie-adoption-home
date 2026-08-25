@@ -99,7 +99,7 @@ export default function AboutPage() {
           <div className="flex flex-col gap-4">
             <div className="aspect-[4/5] bg-muted rounded-sm overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1727284898906-74626a8d8694?w=800&h=1000&fit=crop&auto=format"
+                src="https://images.unsplash.com/photo-1609849538514-be556d1d8e10?w=800&h=1000&fit=crop&auto=format"
                 alt="A Yorkshire Terrier puppy resting on a bench in the breeder's garden"
                 className="w-full h-full object-cover"
               />
@@ -123,21 +123,21 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="aspect-[4/5] bg-muted rounded-sm overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1727284897185-0fe51b096b60?w=600&h=750&fit=crop&auto=format"
+                src="https://images.unsplash.com/photo-1546527868-ccb7ee7dfa6a?w=600&h=750&fit=crop&auto=format"
                 alt="A Yorkshire Terrier puppy in the family home environment"
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="aspect-[4/5] bg-muted rounded-sm overflow-hidden sm:mt-8">
               <img
-                src="https://images.unsplash.com/photo-1727284897803-2fa63e062518?w=600&h=750&fit=crop&auto=format"
+                src="https://images.unsplash.com/photo-1680782378597-e014f7449f2b?w=600&h=750&fit=crop&auto=format"
                 alt="A Yorkshire Terrier puppy exploring outdoors"
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="aspect-[4/5] bg-muted rounded-sm overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1727284898905-d394461a882c?w=600&h=750&fit=crop&auto=format"
+                src="https://images.unsplash.com/photo-1713575139648-d054ca697376?w=600&h=750&fit=crop&auto=format"
                 alt="A Yorkshire Terrier puppy on a bench in the garden"
                 className="w-full h-full object-cover"
               />

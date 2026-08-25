@@ -73,7 +73,7 @@ export default function HomePage() {
       {/* Hero */}
       <section className="relative min-h-[92vh] flex items-end overflow-hidden bg-[#23282F]">
         <img
-          src="https://images.unsplash.com/photo-1627813274558-7d0872d783ed?w=1600&h=1200&fit=crop&auto=format"
+          src="https://images.unsplash.com/photo-1548927548-1a8bb9c7d5e7?w=1600&h=1200&fit=crop&auto=format"
           alt="A Yorkshire Terrier with a steel-blue and tan coat, photographed against a soft background"
           className="absolute inset-0 w-full h-full object-cover object-center"
           style={{ objectPosition: "60% center" }}
