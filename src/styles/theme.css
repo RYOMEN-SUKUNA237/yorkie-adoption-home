@@ -297,3 +297,52 @@
     animation: none !important;
   }
 }
+
+/* ---------------------------------------------------------------------
+   Imagery
+   --------------------------------------------------------------------- */
+
+/* Quiet shimmer while a photograph decodes. Deliberately low-contrast —
+   it should read as "loading", not as a second piece of content. */
+@keyframes shimmer-sweep {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+@utility shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--secondary);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 100%
+    );
+    animation: shimmer-sweep 1.6s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after { animation: none; }
+}
+
+/* Slow, subtle drift on the hero photograph. Gives an otherwise static
+   full-bleed image a sense of life without becoming a distraction. */
+@keyframes hero-drift {
+  from { transform: scale(1.06) translate3d(0, 0, 0); }
+  to   { transform: scale(1.13) translate3d(-1.2%, -0.8%, 0); }
+}
+
+@utility hero-image {
+  animation: hero-drift 26s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-image { animation: none; }
+}

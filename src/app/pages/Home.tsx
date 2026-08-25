@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, ReactNode } from "react";
 import { listPuppies } from "../../services/puppies";
+import { listGuides } from "../../services/guides";
 import { useAsync } from "../../hooks/useAsync";
+import {
+  CredentialsBand,
+  GuidesPreview,
+  WhereTheyAreNow,
+} from "../components/home/sections";
 import { PuppyCard } from "../components/PuppyCard";
 import { useRouter } from "../router";
 
@@ -65,8 +71,13 @@ export default function HomePage() {
   const { navigate } = useRouter();
   // Only the puppies a visitor can still act on belong in the teaser.
   const { data: puppies, error: puppiesError } = useAsync(() => listPuppies(), []);
+  const { data: guides } = useAsync(() => listGuides(), []);
   if (puppiesError) console.warn("[home] could not load puppies:", puppiesError.message);
-  const teaserPuppies = (puppies ?? []).filter((p) => p.status !== "placed").slice(0, 3);
+
+  const all = puppies ?? [];
+  const teaserPuppies = all.filter((p) => p.status !== "placed").slice(0, 3);
+  const placedPuppies = all.filter((p) => p.status === "placed");
+  const availableCount = all.filter((p) => p.status === "available").length;
 
   return (
     <main>
@@ -75,7 +86,7 @@ export default function HomePage() {
         <img
           src="https://images.unsplash.com/photo-1548927548-1a8bb9c7d5e7?w=1600&h=1200&fit=crop&auto=format"
           alt="A Yorkshire Terrier with a steel-blue and tan coat, photographed against a soft background"
-          className="absolute inset-0 w-full h-full object-cover object-center"
+          className="absolute inset-0 w-full h-full object-cover object-center hero-image"
           style={{ objectPosition: "60% center" }}
         />
         <div
@@ -110,6 +121,9 @@ export default function HomePage() {
           </button>
         </div>
       </section>
+
+      {/* Credentials */}
+      <CredentialsBand available={availableCount} />
 
       {/* Process strip */}
       <section className="bg-[#23282F] py-16 px-6 md:px-16 lg:px-24">
@@ -203,6 +217,20 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* Guides */}
+      <FadeUp>
+        <GuidesPreview
+          guides={guides ?? []}
+          onOpen={(slug) => navigate(`/guides/${slug}`)}
+          onSeeAll={() => navigate("/guides")}
+        />
+      </FadeUp>
+
+      {/* Placed dogs */}
+      <FadeUp>
+        <WhereTheyAreNow placed={placedPuppies} />
+      </FadeUp>
 
       {/* Closing CTA */}
       <section className="py-24 px-6 md:px-16 lg:px-24 text-center">

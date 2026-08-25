@@ -366,7 +366,7 @@ try {
   await ok(
     "visitor posts a message",
     `insert into public.messages (conversation_id, sender_role, sender_id, sender_name, body)
-     values ($1, 'visitor', $2, 'E2E Visitor', 'Is Juniper still available?')`,
+     values ($1, 'visitor', $2, 'E2E Visitor', 'Is Sixpence still available?')`,
     [conversationId, visitorId]
   );
 
