@@ -7,8 +7,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { supabase, isSupabaseConfigured, clearStoredSession } from "./supabase";
+import { createClient, type Session } from "@supabase/supabase-js";
+import {
+  supabase,
+  isSupabaseConfigured,
+  clearStoredSession,
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+} from "./supabase";
 import type { ProfileRow } from "./database.types";
 
 interface AuthState {
@@ -21,6 +27,19 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  /** Change your own password. Verifies `current` before setting `next`. */
+  changePassword: (current: string, next: string) => Promise<void>;
+  /** Set a new password from an emailed recovery link. */
+  completeRecovery: (next: string) => Promise<void>;
+  /**
+   * True between clicking an emailed reset link and setting a new password.
+   *
+   * Supabase signs the visitor in to apply a recovery token, so without this
+   * flag the link lands them on the dashboard already authenticated and the
+   * reset silently never happens - they are simply logged in with the old
+   * password still in force.
+   */
+  recovering: boolean;
   refreshProfile: () => Promise<void>;
 }
 
@@ -33,6 +52,9 @@ const AuthContext = createContext<AuthState>({
   signIn: async () => {},
   signOut: async () => {},
   resetPassword: async () => {},
+  changePassword: async () => {},
+  completeRecovery: async () => {},
+  recovering: false,
   refreshProfile: async () => {},
 });
 
@@ -41,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionResolved, setSessionResolved] = useState(!isSupabaseConfigured);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [profileResolved, setProfileResolved] = useState(!isSupabaseConfigured);
+  const [recovering, setRecovering] = useState(false);
 
   const userId = session?.user?.id ?? null;
 
@@ -93,8 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (active) setSessionResolved(true);
       });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
+      // Still synchronous - see the note above. Setting a flag is safe;
+      // calling back into Supabase from here is not.
+      if (event === "PASSWORD_RECOVERY") setRecovering(true);
       setSession(nextSession);
       setSessionResolved(true);
     });
@@ -178,6 +204,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
+  /**
+   * Change your own password.
+   *
+   * Supabase's updateUser() will set a new password on the strength of the
+   * session alone, which means an unattended logged-in laptop is enough to
+   * take an account over. Re-authenticating with the current password first
+   * closes that, and doubles as the typo check on the old one.
+   *
+   * The re-auth uses a throwaway client so a wrong current password cannot
+   * disturb the session already in hand - signInWithPassword on the live
+   * client would replace or drop it on the way through.
+   */
+  const changePassword = useCallback(async (current: string, next: string) => {
+    if (!supabase) throw new Error("Supabase is not configured.");
+
+    const { data: userData } = await supabase.auth.getUser();
+    const email = userData.user?.email;
+    if (!email) throw new Error("You are not signed in.");
+
+    const probe = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { error: reauthError } = await probe.auth.signInWithPassword({
+      email,
+      password: current,
+    });
+    await probe.auth.signOut().catch(() => {});
+
+    if (reauthError) throw new Error("That is not your current password.");
+
+    const { error } = await supabase.auth.updateUser({ password: next });
+    if (error) throw error;
+  }, []);
+
+  /** Finish a reset started from an emailed link. */
+  const completeRecovery = useCallback(async (next: string) => {
+    if (!supabase) throw new Error("Supabase is not configured.");
+    const { error } = await supabase.auth.updateUser({ password: next });
+    if (error) throw error;
+    setRecovering(false);
+  }, []);
+
   const refreshProfile = useCallback(async () => {
     if (!userId) return;
     const row = await fetchProfile(userId);
@@ -194,6 +262,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       resetPassword,
+      changePassword,
+      completeRecovery,
+      recovering,
       refreshProfile,
     }),
     [

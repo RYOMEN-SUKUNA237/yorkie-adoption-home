@@ -83,7 +83,11 @@ const DEFAULT_SETTINGS: SettingsMap = {
   site_name: "Yorkshire Adoption Home",
   tagline: "A small, selective Yorkshire Terrier breeder. One or two litters a year, raised in our kitchen.",
   contact_email: "hello@yorkshire-adoption.example",
-  whatsapp_number: "60123456789",
+  contact_phone: "+1 (858) 798-6768",
+  whatsapp_number: "18587986768",
+  address: "",
+  instagram_url: "",
+  notify_email: "",
   applications_open: true,
   messenger_enabled: true,
   messenger_greeting:
@@ -93,6 +97,18 @@ const DEFAULT_SETTINGS: SettingsMap = {
   office_hours: "Mon-Sat, 9am - 6pm (GMT+8)",
   review_sla_days: 14,
 };
+
+/**
+ * Keys that must never reach the public site.
+ *
+ * `site_settings.is_public` defaults to true, so a key written without an
+ * explicit value becomes world-readable the moment it is first saved. That
+ * is fine for a tagline and wrong for the address notifications are sent to,
+ * and the failure is silent - the row simply starts being served to anon.
+ * Naming them here means the write below decides deliberately rather than
+ * inheriting a default.
+ */
+const PRIVATE_SETTING_KEYS = new Set(["notify_email"]);
 
 export async function getSettings(): Promise<SettingsMap> {
   if (!supabase) return { ...DEFAULT_SETTINGS };
@@ -115,6 +131,7 @@ export async function updateSettings(patch: SettingsMap): Promise<void> {
   const rows = Object.entries(patch).map(([key, value]) => ({
     key,
     value,
+    is_public: !PRIVATE_SETTING_KEYS.has(key),
     updated_by: session.user?.id ?? null,
     updated_at: new Date().toISOString(),
   }));

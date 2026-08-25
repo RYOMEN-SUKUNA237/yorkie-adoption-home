@@ -18,6 +18,16 @@ export const isSupabaseConfigured = Boolean(
 export const AUTH_STORAGE_KEY = "yah-auth";
 
 /**
+ * The raw credentials, for the rare caller that needs its own client rather
+ * than the shared one below - re-authenticating to confirm a password, where
+ * a failed attempt must not be able to disturb the live session.
+ *
+ * Empty strings when unconfigured; guard on `isSupabaseConfigured` first.
+ */
+export const SUPABASE_URL = url ?? "";
+export const SUPABASE_ANON_KEY = anonKey ?? "";
+
+/**
  * Fetch wrapper that keeps a broken session from breaking the public site.
  *
  * Supabase attaches whatever session it holds to every request. If that

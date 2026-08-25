@@ -177,13 +177,18 @@ const settings = [
   ["site_name", "Yorkshire Adoption Home", true],
   ["tagline", "A small, selective Yorkshire Terrier breeder. One or two litters a year, raised in our kitchen.", true],
   ["contact_email", "hello@yorkshire-adoption.example", true],
-  ["whatsapp_number", "447700900000", true],
+  ["contact_phone", "+1 (858) 798-6768", true],
+  // Digits only, country code included - wa.me rejects anything else.
+  ["whatsapp_number", "18587986768", true],
+  ["address", "", true],
+  ["instagram_url", "", true],
   ["applications_open", true, true],
   ["messenger_enabled", true, true],
   ["messenger_greeting", "Hello. Ask us anything about our Yorkshire Terriers or the adoption process - we usually reply within a day.", true],
   ["messenger_away_message", "We are not at the desk right now. Leave a message and your email, and we will come back to you.", true],
   ["office_hours", "Mon-Sat, 9am - 6pm (GMT+8)", true],
   ["review_sla_days", 14, true],
+  // false = never served to anon. See PRIVATE_SETTING_KEYS in services/misc.
   ["notify_email", "hello@yorkshire-adoption.example", false],
 ];
 

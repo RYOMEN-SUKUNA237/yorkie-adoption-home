@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Check, ShieldCheck, User as UserIcon } from "lucide-react";
+import { Loader2, Check, ShieldCheck, User as UserIcon, KeyRound } from "lucide-react";
 import { useAsync } from "../../../hooks/useAsync";
 import {
   getSettings, listProfiles, settingBool, settingString, updateProfile, updateSettings,
@@ -97,21 +97,68 @@ export default function Settings() {
                     type="email"
                     value={settingString(draft, "contact_email")}
                     onChange={(e) => set("contact_email", e.target.value)}
+                    placeholder="hello@example.com"
                   />
                 </Field>
-                <Field label="WhatsApp number" hint="Digits only, including country code.">
+                <Field
+                  label="Phone number"
+                  hint="Shown in the footer and dialled directly from a phone."
+                >
                   <TextInput
-                    value={settingString(draft, "whatsapp_number")}
-                    onChange={(e) => set("whatsapp_number", e.target.value)}
-                    placeholder="60123456789"
+                    type="tel"
+                    value={settingString(draft, "contact_phone")}
+                    onChange={(e) => set("contact_phone", e.target.value)}
+                    placeholder="+1 (858) 798-6768"
                   />
                 </Field>
               </div>
-              <Field label="Office hours">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="WhatsApp number"
+                  hint="Digits and country code only — wa.me rejects spaces and brackets."
+                >
+                  <TextInput
+                    value={settingString(draft, "whatsapp_number")}
+                    onChange={(e) => set("whatsapp_number", e.target.value)}
+                    placeholder="18587986768"
+                  />
+                </Field>
+                <Field label="Office hours">
+                  <TextInput
+                    value={settingString(draft, "office_hours")}
+                    onChange={(e) => set("office_hours", e.target.value)}
+                    placeholder="Mon–Sat, 9am – 6pm"
+                  />
+                </Field>
+              </div>
+              <Field
+                label="Address"
+                hint="Optional. Appears in the footer — leave empty to show nothing."
+              >
+                <TextArea
+                  rows={2}
+                  value={settingString(draft, "address")}
+                  onChange={(e) => set("address", e.target.value)}
+                  placeholder="Harrogate, North Yorkshire"
+                />
+              </Field>
+              <Field label="Instagram" hint="Optional. Full URL.">
                 <TextInput
-                  value={settingString(draft, "office_hours")}
-                  onChange={(e) => set("office_hours", e.target.value)}
-                  placeholder="Mon–Sat, 9am – 6pm (GMT+8)"
+                  type="url"
+                  value={settingString(draft, "instagram_url")}
+                  onChange={(e) => set("instagram_url", e.target.value)}
+                  placeholder="https://instagram.com/yourhandle"
+                />
+              </Field>
+              <Field
+                label="Notification email"
+                hint="Where new applications and messages are announced. Never shown publicly."
+              >
+                <TextInput
+                  type="email"
+                  value={settingString(draft, "notify_email")}
+                  onChange={(e) => set("notify_email", e.target.value)}
+                  placeholder="hello@example.com"
                 />
               </Field>
             </div>
@@ -173,6 +220,8 @@ export default function Settings() {
               </Field>
             </div>
           </Card>
+
+          <PasswordCard />
 
           {/* Team — admin only */}
           {isAdmin && (
@@ -250,5 +299,106 @@ export default function Settings() {
         </div>
       </div>
     </>
+  );
+}
+
+
+/**
+ * Change your own password.
+ *
+ * Kept out of the settings draft entirely: everything else on this page is
+ * saved together by "Save changes", and a password must not ride along with
+ * a tagline edit — it needs its own confirmation, its own errors, and must
+ * not be re-sent every time something unrelated is saved.
+ */
+function PasswordCard() {
+  const { changePassword } = useAuth();
+
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const tooShort = next.length > 0 && next.length < 8;
+  const mismatch = confirm.length > 0 && next !== confirm;
+  const ready = current.length > 0 && next.length >= 8 && next === confirm;
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await changePassword(current, next);
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      setDone(true);
+      setTimeout(() => setDone(false), 4000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not change the password.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card className="p-5 sm:p-6">
+      <h2 className="text-sm font-semibold text-foreground mb-1">Your password</h2>
+      <p className="text-xs text-muted-foreground mb-5">
+        Changing this signs you out of nothing — your other devices keep working until their
+        sessions expire.
+      </p>
+
+      {error && (
+        <p
+          className="text-sm text-primary bg-background border border-border rounded-md px-4 py-3 mb-4"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
+
+      <div className="flex flex-col gap-4">
+        <Field label="Current password">
+          <TextInput
+            type="password"
+            autoComplete="current-password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+          />
+        </Field>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field
+            label="New password"
+            hint={tooShort ? "At least 8 characters." : "At least 8 characters."}
+          >
+            <TextInput
+              type="password"
+              autoComplete="new-password"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+              aria-invalid={tooShort || undefined}
+            />
+          </Field>
+          <Field label="Confirm new password" hint={mismatch ? "These do not match." : undefined}>
+            <TextInput
+              type="password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              aria-invalid={mismatch || undefined}
+            />
+          </Field>
+        </div>
+        <div className="flex justify-end">
+          <Button variant="secondary" onClick={submit} disabled={!ready || busy}>
+            {busy && <Loader2 size={14} className="animate-spin" />}
+            {done ? <Check size={14} /> : <KeyRound size={14} />}
+            {done ? "Password changed" : "Change password"}
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }

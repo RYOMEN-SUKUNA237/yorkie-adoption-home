@@ -640,6 +640,7 @@ function UnavailableNotice({
   onRetry: () => void;
 }) {
   const emailAddress = settingString(settings, "contact_email", "");
+  const phone = settingString(settings, "contact_phone", "");
   const whatsapp = settingString(settings, "whatsapp_number", "");
 
   return (
@@ -659,6 +660,14 @@ function UnavailableNotice({
           {retrying && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
           {retrying ? "Reconnecting…" : "Try again"}
         </button>
+        {phone && (
+          <a
+            href={`tel:${phone.replace(/[^\d+]/g, "")}`}
+            className="w-full py-2.5 text-sm font-medium border border-border rounded-sm hover:border-foreground/40 transition-colors"
+          >
+            {phone}
+          </a>
+        )}
         {emailAddress && (
           <a
             href={`mailto:${emailAddress}`}

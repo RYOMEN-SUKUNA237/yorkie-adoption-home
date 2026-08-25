@@ -133,7 +133,10 @@ function Footer() {
   const siteName = settingString(settings, "site_name", "Yorkshire Adoption Home");
   const tagline = settingString(settings, "tagline", "");
   const email = settingString(settings, "contact_email", "");
+  const phone = settingString(settings, "contact_phone", "");
   const whatsapp = settingString(settings, "whatsapp_number", "");
+  const address = settingString(settings, "address", "");
+  const instagram = settingString(settings, "instagram_url", "");
 
   return (
     <footer className="bg-[#23282F] text-[#9AA5B2]">
@@ -174,6 +177,14 @@ function Footer() {
               Contact
             </p>
             <div className="flex flex-col gap-2.5 text-sm">
+              {phone && (
+                <a
+                  href={`tel:${phone.replace(/[^\d+]/g, "")}`}
+                  className="hover:text-[#F7F5F2] transition-colors"
+                >
+                  {phone}
+                </a>
+              )}
               {whatsapp && (
                 <a
                   href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`}
@@ -191,6 +202,19 @@ function Footer() {
                 >
                   {email}
                 </a>
+              )}
+              {instagram && (
+                <a
+                  href={instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#F7F5F2] transition-colors"
+                >
+                  Instagram
+                </a>
+              )}
+              {address && (
+                <p className="leading-relaxed whitespace-pre-line pt-1">{address}</p>
               )}
             </div>
           </div>

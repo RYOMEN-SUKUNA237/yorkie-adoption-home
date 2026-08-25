@@ -18,7 +18,7 @@ import { isSupabaseConfigured } from "../../../lib/supabase";
 import { initials } from "../../../lib/format";
 import { subscribeToInbox } from "../../../services/messages";
 import { supabase } from "../../../lib/supabase";
-import AdminLogin from "./AdminLogin";
+import AdminLogin, { SetNewPassword } from "./AdminLogin";
 import SetupRequired from "./SetupRequired";
 import { LoadingState } from "../../components/admin/ui";
 
@@ -47,7 +47,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
  */
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { path, navigate } = useRouter();
-  const { loading, session, isStaff, profile, signOut } = useAuth();
+  const { loading, session, isStaff, profile, signOut, recovering } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
@@ -81,6 +81,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       </div>
     );
   }
+  // Recovery is checked before the staff gate, not after. Supabase signs the
+  // visitor in to apply the recovery token, so by the time we get here they
+  // look like an ordinary signed-in member of staff — fall through and they
+  // land on the dashboard with the old password still in force, having been
+  // shown no way to set a new one.
+  if (recovering) return <SetNewPassword />;
   if (!session || !isStaff) return <AdminLogin signedInButNotStaff={Boolean(session) && !isStaff} />;
 
   const isActive = (href: string) =>

@@ -175,3 +175,97 @@ function Shell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+
+/**
+ * The other half of "Forgot your password?".
+ *
+ * resetPasswordForEmail() sends a link that signs the visitor in and hands
+ * the app a recovery token — but signing in is not resetting anything.
+ * Without this screen the link simply drops them on the dashboard, still on
+ * the old password, with nothing on screen suggesting the reset did not
+ * happen. AdminLayout renders this ahead of the staff gate for that reason.
+ */
+export function SetNewPassword() {
+  const { completeRecovery, signOut } = useAuth();
+
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const tooShort = next.length > 0 && next.length < 8;
+  const mismatch = confirm.length > 0 && next !== confirm;
+  const ready = next.length >= 8 && next === confirm;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ready) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await completeRecovery(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not set the password.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Shell>
+      <p className="text-[11px] tracking-[0.25em] uppercase text-accent font-medium mb-3">
+        Yorkshire Adoption Home
+      </p>
+      <h1
+        className="text-3xl font-light text-foreground mb-2"
+        style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+      >
+        Set a new password
+      </h1>
+      <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+        Choose a new password for your account. You will stay signed in here once it is saved.
+      </p>
+
+      {error && (
+        <p
+          className="text-sm text-primary bg-sidebar border border-border rounded-md px-4 py-3 mb-4"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Field label="New password" hint="At least 8 characters.">
+          <TextInput
+            type="password"
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+            required
+            autoFocus
+            autoComplete="new-password"
+            aria-invalid={tooShort || undefined}
+          />
+        </Field>
+        <Field label="Confirm new password" hint={mismatch ? "These do not match." : undefined}>
+          <TextInput
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            required
+            autoComplete="new-password"
+            aria-invalid={mismatch || undefined}
+          />
+        </Field>
+        <Button type="submit" variant="primary" disabled={!ready || busy}>
+          {busy && <Loader2 size={14} className="animate-spin" />}
+          Save new password
+        </Button>
+        <Button variant="ghost" onClick={() => void signOut()}>
+          <ArrowLeft size={14} /> Cancel and sign out
+        </Button>
+      </form>
+    </Shell>
+  );
+}
