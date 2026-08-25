@@ -12,6 +12,7 @@ import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import pg from "pg";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -232,11 +233,163 @@ if (anonErr) {
     });
     forgeMsgErr
       ? pass("visitor cannot post as admin (RLS refused it)")
-      : fail("visitor WAS able to post as admin — impersonation possible");
+      : fail("visitor WAS able to post as admin - impersonation possible");
+
+    // Resuming a thread. The messenger calls this on every page load; if the
+    // select policy is wrong the visitor silently loses their history and the
+    // panel opens on the intro form as though they had never written.
+    const { data: mine, error: mineErr } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("visitor_id", anonAuth.user.id)
+      .maybeSingle();
+    if (mineErr) fail(`visitor cannot re-read own conversation: ${mineErr.message}`);
+    else if (!mine) fail("visitor cannot re-read own conversation (no row returned)");
+    else pass("visitor can resume their own conversation");
+
+    const { data: myMsgs, error: myMsgsErr } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", convo.id);
+    if (myMsgsErr) fail(`visitor cannot read own messages: ${myMsgsErr.message}`);
+    else if (!myMsgs?.length) fail("visitor cannot read own messages (none returned)");
+    else pass(`visitor can read their own history (${myMsgs.length})`);
+
+    // mark_conversation_read is an RPC because unread_for_* must not be
+    // directly writable by the visitor.
+    const { error: readErr } = await supabase.rpc("mark_conversation_read", {
+      p_conversation_id: convo.id,
+      p_as: "visitor",
+    });
+    readErr ? fail(`mark_conversation_read: ${readErr.message}`) : pass("visitor can mark read");
+
+    // Realtime, which is the whole point of the panel. RLS applies to the
+    // replication stream too, so this also proves the visitor is subscribed
+    // to their own thread and not merely to a channel name.
+    //
+    // The budget is deliberately generous: this is the first WebSocket of the
+    // run, and a cold Realtime connection has been seen to take well over ten
+    // seconds. A tight timeout here fails as "realtime is broken" when the
+    // truth is "the socket had not finished connecting", which is a far more
+    // expensive thing to be told.
+    let probeChannel = null;
+    const outcome = await new Promise((resolve) => {
+      const timer = setTimeout(
+        () => resolve({ ok: false, why: "no INSERT arrived within 30s" }),
+        30_000
+      );
+      const settle = (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      };
+      probeChannel = supabase
+        .channel(`check:${convo.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `conversation_id=eq.${convo.id}`,
+          },
+          () => settle({ ok: true })
+        )
+        .subscribe(async (status, err) => {
+          if (status === "SUBSCRIBED") {
+            const { error } = await supabase.from("messages").insert({
+              conversation_id: convo.id,
+              sender_role: "visitor",
+              body: "Realtime probe.",
+            });
+            if (error) settle({ ok: false, why: `probe insert refused: ${error.message}` });
+            return;
+          }
+          // CHANNEL_ERROR / TIMED_OUT / CLOSED are terminal — say so straight
+          // away rather than sitting out the full timeout.
+          if (status !== "CLOSED") {
+            settle({ ok: false, why: `channel ${status}${err ? `: ${err.message}` : ""}` });
+          }
+        });
+    });
+    outcome.ok
+      ? pass("realtime delivered the message to the visitor")
+      : fail(`realtime: ${outcome.why} - check Database -> Replication`);
+    if (probeChannel) await supabase.removeChannel(probeChannel);
+
+    // Isolation: a second visitor must not be able to see the first one's
+    // thread. This is the policy that keeps one stranger's conversation out
+    // of another stranger's panel.
+    const other = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { error: otherAuthErr } = await other.auth.signInAnonymously();
+    if (otherAuthErr) {
+      warn(`could not open a second visitor session: ${otherAuthErr.message}`);
+    } else {
+      const { data: leaked } = await other
+        .from("conversations")
+        .select("id")
+        .eq("id", convo.id);
+      leaked?.length
+        ? fail("another visitor CAN read this conversation - threads are not isolated")
+        : pass("another visitor cannot read this conversation");
+
+      const { data: leakedMsgs } = await other
+        .from("messages")
+        .select("id")
+        .eq("conversation_id", convo.id);
+      leakedMsgs?.length
+        ? fail("another visitor CAN read these messages - threads are not isolated")
+        : pass("another visitor cannot read these messages");
+
+      await other.auth.signOut();
+    }
 
     await supabase.from("conversations").delete().eq("id", convo.id);
   }
   await supabase.auth.signOut();
+}
+
+// ---------------------------------------------------------------------
+// Cleanup
+//
+// The submission checks go through submit_application(), which really does
+// write a row - that is the point, since a mock would prove nothing about
+// the trigger or the RPC. But `applications` deliberately has no DELETE
+// policy for anon, so the anon key that made these rows cannot remove them,
+// and every run left three more behind until db:verify failed with "test
+// data leaked" and the dashboard filled up with fake applicants.
+//
+// So cleanup is a separate, explicitly privileged step that runs only after
+// every assertion above has finished with the anon key. The pattern is
+// narrow by design: the three generated local-parts at example.com, a
+// domain RFC 2606 reserves precisely so it can never be a real applicant.
+// ---------------------------------------------------------------------
+console.log("\nCleanup");
+
+const adminUrl = env.DIRECT_URL || env.DATABASE_URL;
+const TEST_ROW_PATTERN = "^(connectivity\\.check|forged|nocommit)\\.[0-9]+@example\\.com$";
+
+if (!adminUrl) {
+  warn("DIRECT_URL not set - the submitted test applications were left behind.");
+  warn("Set it in .env.local and re-run, or delete them in Admin -> Applications.");
+} else {
+  const admin = new pg.Client({
+    connectionString: adminUrl,
+    ssl: { rejectUnauthorized: false },
+  });
+  try {
+    await admin.connect();
+    const { rowCount } = await admin.query(
+      "delete from public.applications where email ~ $1",
+      [TEST_ROW_PATTERN]
+    );
+    pass(`removed ${rowCount} test application(s)`);
+  } catch (err) {
+    fail(`could not remove test applications: ${err.message}`);
+  } finally {
+    await admin.end().catch(() => {});
+  }
 }
 
 console.log(

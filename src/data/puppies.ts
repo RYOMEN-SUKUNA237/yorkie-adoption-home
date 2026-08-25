@@ -145,22 +145,56 @@ const DAM_MOORLAND: Parent = {
 
 // ---------------------------------------------------------------------
 // Photography — placeholder Yorkshire Terrier images from Unsplash.
-// Each id was checked by eye before being added; do not swap one in
-// from an id alone. Replace with real photographs through the
-// dashboard (Puppies → Edit → Upload) before going live.
+//
+// Every id below was opened and looked at before being added: each one is
+// a Yorkshire Terrier, not a Silky, Biewer, Morkie or wire-haired terrier
+// that reads as one in a thumbnail. Do not swap an id in from a filename
+// or an alt-text search result alone.
+//
+// Two rules this list exists to enforce:
+//
+//   1. No photograph appears on two listings. A visitor comparing Hazel
+//      and Bramble must not be shown the same dog twice — on an adoption
+//      page that is the one error nobody forgives.
+//   2. A listing only ever carries photographs OF THAT DOG. `pennyA` and
+//      `pennyB` are two frames from one shoot, which is why Penny is the
+//      only puppy here with a second image.
+//
+// Stock photography of Yorkshire Terriers is overwhelmingly of adult
+// dogs; only four genuine young-puppy frames exist in this set, and they
+// are spent on the four youngest listings. The older listings therefore
+// show dogs with more coat than a ten-week-old really has. Replace the
+// lot with real photographs through the dashboard (Puppies → Edit →
+// Upload) before going live.
 // ---------------------------------------------------------------------
 
+const u = (id: string) =>
+  `https://images.unsplash.com/${id}?w=900&h=1100&fit=crop&auto=format`;
+
 const PHOTOS = {
-  a: "https://images.unsplash.com/photo-1547482354-89d4259dbc4b?w=900&h=1100&fit=crop&auto=format",
-  b: "https://images.unsplash.com/photo-1526440847959-4e38e7f00b04?w=900&h=1100&fit=crop&auto=format",
-  c: "https://images.unsplash.com/photo-1618760877592-0d80e8b7bd02?w=900&h=1100&fit=crop&auto=format",
-  d: "https://images.unsplash.com/photo-1611170078485-6c1c9ca31936?w=900&h=1100&fit=crop&auto=format",
-  e: "https://images.unsplash.com/photo-1681853134483-4b9801215145?w=900&h=1100&fit=crop&auto=format",
-  f: "https://images.unsplash.com/photo-1546527868-ccb7ee7dfa6a?w=900&h=1100&fit=crop&auto=format",
-  g: "https://images.unsplash.com/photo-1650132392843-cb49902dfcf1?w=900&h=1100&fit=crop&auto=format",
-  h: "https://images.unsplash.com/photo-1612830549030-bfb4b58ccd5f?w=900&h=1100&fit=crop&auto=format",
-  i: "https://images.unsplash.com/photo-1591608971358-f93643d11763?w=900&h=1100&fit=crop&auto=format",
-  j: "https://images.unsplash.com/photo-1659946431902-2786bdd0b39d?w=900&h=1100&fit=crop&auto=format",
+  // Genuine young puppies — reserved for the youngest four listings.
+  puppyTiny: u("photo-1546527762-f0234da4e9c8"),
+  puppyBed: u("photo-1654101437386-9fdf9469c769"),
+  puppyAutumn: u("photo-1695780963266-6225eff4f853"),
+  puppyRug: u("photo-1546527868-ccb7ee7dfa6a"),
+
+  // Juveniles — still short in the coat, tan coming through.
+  juvCollar: u("photo-1618760877592-0d80e8b7bd02"),
+  juvCream: u("photo-1611170078485-6c1c9ca31936"),
+  juvIndoor: u("photo-1526440847959-4e38e7f00b04"),
+
+  // Penny — two frames of the same dog, one shoot.
+  pennyA: u("photo-1689009480234-e67dc23b437a"),
+  pennyB: u("photo-1689009480504-6420452a7e8e"),
+
+  // Grown coats.
+  adultGrass: u("photo-1659946431902-2786bdd0b39d"),
+  adultEars: u("photo-1731027683053-3a025de056c3"),
+  adultCarpet: u("photo-1633291294388-3e73294ab65f"),
+  adultDark: u("photo-1612830549030-bfb4b58ccd5f"),
+  adultHarness: u("photo-1610389712622-73f621ff06bf"),
+  adultPaving: u("photo-1574760112346-8443c3773437"),
+  adultTrail: u("photo-1650132392843-cb49902dfcf1"),
 } as const;
 
 // ---------------------------------------------------------------------
@@ -188,7 +222,7 @@ const SEEDS: PuppySeed[] = [
     sex: "male",
     tags: ["bold", "bright", "vocal"],
     status: "available",
-    photos: [PHOTOS.a, PHOTOS.b, PHOTOS.c],
+    photos: [PHOTOS.puppyRug],
     notes:
       "Sixpence has decided he is a much larger dog than he is, and nothing we have done has dissuaded him. He announces visitors, supervises the garden, and escorts anyone carrying food. Underneath the bravado he is affectionate and unusually quick — he had sit and wait inside a fortnight. He will suit someone who finds a big personality in a small dog funny rather than tiring, and who will teach him that not every noise requires comment.",
     sire: SIRE_BRIGHTWATER,
@@ -201,7 +235,7 @@ const SEEDS: PuppySeed[] = [
     sex: "female",
     tags: ["gentle", "watchful", "steady"],
     status: "available",
-    photos: [PHOTOS.d, PHOTOS.e],
+    photos: [PHOTOS.juvCollar],
     notes:
       "Hazel is the quiet one of her litter and the last to make up her mind about anything. She watches first, joins second, and once she has decided you are hers she is completely devoted. She is easier company than most Yorkies of this age — less noise, less fuss — but she does not like being left, and a household where someone is usually home would suit her far better than one that is empty all day.",
     sire: SIRE_BRIGHTWATER,
@@ -214,7 +248,7 @@ const SEEDS: PuppySeed[] = [
     sex: "female",
     tags: ["busy", "clever", "mischievous"],
     status: "pending",
-    photos: [PHOTOS.f],
+    photos: [PHOTOS.juvIndoor],
     notes:
       "Tuppence is a project manager. She rearranges her toys, tests every gap in the fence, and has twice let herself out of a crate we were assured was secure. She is enormously clever and needs that mind occupied — training games, puzzle feeders, something to do. In the right home she will be a joy. In a home with no plan for her, she will make her own entertainment and it will be expensive.",
     sire: SIRE_COPPERFIELD,
@@ -227,7 +261,7 @@ const SEEDS: PuppySeed[] = [
     sex: "male",
     tags: ["cuddly", "easygoing", "sociable"],
     status: "available",
-    photos: [PHOTOS.i, PHOTOS.a],
+    photos: [PHOTOS.puppyAutumn],
     notes:
       "Rowan is the softest puppy in this litter. He greets everyone, tolerates being carried about by children with visible patience, and falls asleep on whoever sits down first. He has none of the wariness the breed is sometimes known for. For a family who want a small dog that is genuinely easy with visitors and grandchildren, he is the obvious choice.",
     sire: SIRE_WHARFEDALE,
@@ -240,7 +274,7 @@ const SEEDS: PuppySeed[] = [
     sex: "male",
     tags: ["spirited", "loyal", "tenacious"],
     status: "available",
-    photos: [PHOTOS.b, PHOTOS.h],
+    photos: [PHOTOS.juvCream],
     notes:
       "Bramble is a terrier in the old sense — he will follow a scent to the end of the garden and dig where it stops. He is loyal to the point of shadowing, and he does not much care for other dogs he has not been introduced to properly. An owner who enjoys the terrier temperament rather than apologising for it will get a wonderful dog. He needs a secure garden; he will find any gap there is.",
     sire: SIRE_COPPERFIELD,
@@ -253,7 +287,7 @@ const SEEDS: PuppySeed[] = [
     sex: "female",
     tags: ["poised", "elegant", "confident"],
     status: "available",
-    photos: [PHOTOS.c, PHOTOS.d],
+    photos: [PHOTOS.pennyA, PHOTOS.pennyB],
     notes:
       "Penny carries herself beautifully and knows it. She stands for grooming without complaint, walks on a lead as though she invented it, and the steel-blue and tan is coming through nicely. She would do well in a show home, but she is not precious — she is equally happy muddy. Confident with strangers, unbothered by noise, and completely unafraid of larger dogs.",
     sire: SIRE_WHARFEDALE,
@@ -266,7 +300,7 @@ const SEEDS: PuppySeed[] = [
     sex: "male",
     tags: ["comic", "affectionate", "vocal"],
     status: "pending",
-    photos: [PHOTOS.e, PHOTOS.f],
+    photos: [PHOTOS.adultEars],
     notes:
       "Otto talks constantly — not barking exactly, a running commentary of grumbles and opinions. He is very funny and very affectionate, and he has no interest whatsoever in being quiet. We are being direct about this because it is the thing most likely to matter: he will not suit a flat with thin walls or a household that needs a silent dog. For everyone else he is enormous fun.",
     sire: SIRE_BRIGHTWATER,
@@ -279,7 +313,7 @@ const SEEDS: PuppySeed[] = [
     sex: "female",
     tags: ["delicate", "sweet", "new"],
     status: "available",
-    photos: [PHOTOS.h, PHOTOS.g],
+    photos: [PHOTOS.puppyBed],
     notes:
       "Willow is our smallest and will stay with her mother longer than the others. We do not let the little ones go early, and with a puppy this size we watch weight and blood sugar closely before she travels anywhere. She is sweet-natured and seeks out warmth and company. We list her now because families wanting a very young puppy usually need time to prepare.",
     sire: SIRE_WHARFEDALE,
@@ -292,7 +326,7 @@ const SEEDS: PuppySeed[] = [
     sex: "male",
     tags: ["independent", "calm", "assured"],
     status: "available",
-    photos: [PHOTOS.a, PHOTOS.e],
+    photos: [PHOTOS.adultDark],
     notes:
       "We held Flint back a few weeks to watch how his coat and temperament settled, and both have come along well. He is more self-contained than most of the breed — affectionate when he chooses, content alone in a room, unfussed by an ordinary working morning. If the separation anxiety Yorkies are prone to has put you off the breed, Flint is the one to ask about.",
     sire: SIRE_COPPERFIELD,
@@ -305,7 +339,7 @@ const SEEDS: PuppySeed[] = [
     sex: "female",
     tags: ["playful", "brave", "affectionate"],
     status: "available",
-    photos: [PHOTOS.j, PHOTOS.c],
+    photos: [PHOTOS.adultGrass],
     notes:
       "Marigold plays until she falls over, sleeps hard, and starts again. She is brave with new things and recovers quickly when something startles her, which is a temperament we like very much in this breed. She is affectionate without being clingy. A busy household with children old enough to handle a small dog carefully would suit her perfectly.",
     sire: SIRE_BRIGHTWATER,
@@ -318,7 +352,7 @@ const SEEDS: PuppySeed[] = [
     sex: "male",
     tags: ["devoted", "quiet", "sensitive"],
     status: "pending",
-    photos: [PHOTOS.f, PHOTOS.b],
+    photos: [PHOTOS.adultCarpet],
     notes:
       "Jasper is sensitive in the good sense — he reads a room accurately and adjusts. He is quiet for a Yorkie and forms an intense attachment to one person in particular. He would be miserable in a chaotic home and wonderful in a calm one, especially with someone often at home. He does not enjoy being talked over or picked up without warning.",
     sire: SIRE_WHARFEDALE,
@@ -331,7 +365,7 @@ const SEEDS: PuppySeed[] = [
     sex: "female",
     tags: ["tiny", "curious", "new"],
     status: "available",
-    photos: [PHOTOS.g, PHOTOS.h],
+    photos: [PHOTOS.puppyTiny],
     notes:
       "Nutmeg is a few weeks from being ready and is not yet reserved. She is curious about everything and already climbing out of places she should not be able to reach. Too young to say much about her adult temperament, but she is confident with handling and eating well, which is what we look for at this stage.",
     sire: SIRE_COPPERFIELD,
@@ -344,7 +378,7 @@ const SEEDS: PuppySeed[] = [
     sex: "male",
     tags: ["settled", "affectionate", "characterful"],
     status: "placed",
-    photos: [PHOTOS.b],
+    photos: [PHOTOS.adultHarness],
     notes:
       "Barnaby went to a couple in Edinburgh earlier this year. They send photographs regularly. He has, we are told, taken firm possession of the sunniest windowsill in the flat and defends it against all comers, including the postman, who is outside and cannot hear him.",
     sire: SIRE_BRIGHTWATER,
@@ -357,7 +391,7 @@ const SEEDS: PuppySeed[] = [
     sex: "female",
     tags: ["bright", "adaptable", "loving"],
     status: "placed",
-    photos: [PHOTOS.c],
+    photos: [PHOTOS.adultPaving],
     notes:
       "Clover found her family in Manchester and settled in immediately, including with the resident cat, who reportedly outranks her and is not challenged on it.",
     sire: SIRE_WHARFEDALE,
@@ -370,7 +404,7 @@ const SEEDS: PuppySeed[] = [
     sex: "male",
     tags: ["confident", "loyal", "spirited"],
     status: "placed",
-    photos: [PHOTOS.a],
+    photos: [PHOTOS.adultTrail],
     notes:
       "Atticus was placed with a retired couple who wanted a small companion with a large personality. By all accounts they got exactly what they asked for and have no regrets whatsoever.",
     sire: SIRE_COPPERFIELD,

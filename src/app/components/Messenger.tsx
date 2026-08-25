@@ -42,6 +42,11 @@ export default function Messenger({ settings }: MessengerProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
+  // Bumped by the offline notice to re-run the bootstrap effect. A visitor
+  // whose first load raced a dropped connection would otherwise sit on the
+  // fallback for the rest of the session with no way back to live chat.
+  const [retry, setRetry] = useState(0);
+  const [retrying, setRetrying] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -66,6 +71,7 @@ export default function Messenger({ settings }: MessengerProps) {
     }
 
     let cancelled = false;
+    if (retry > 0) setPhase("loading");
 
     (async () => {
       try {
@@ -96,13 +102,15 @@ export default function Messenger({ settings }: MessengerProps) {
           console.warn("[messenger]", err);
           setPhase("unavailable");
         }
+      } finally {
+        if (!cancelled) setRetrying(false);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, retry]);
 
   // -------------------------------------------------------------------
   // Realtime: new messages arrive whether the panel is open or shut
@@ -335,7 +343,16 @@ export default function Messenger({ settings }: MessengerProps) {
             </div>
           )}
 
-          {phase === "unavailable" && <UnavailableNotice settings={settings} />}
+          {phase === "unavailable" && (
+            <UnavailableNotice
+              settings={settings}
+              retrying={retrying}
+              onRetry={() => {
+                setRetrying(true);
+                setRetry((n) => n + 1);
+              }}
+            />
+          )}
 
           {(phase === "intro" || phase === "chat") && (
             <>
@@ -613,7 +630,15 @@ function Composer({
   );
 }
 
-function UnavailableNotice({ settings }: { settings: SettingsMap }) {
+function UnavailableNotice({
+  settings,
+  retrying,
+  onRetry,
+}: {
+  settings: SettingsMap;
+  retrying: boolean;
+  onRetry: () => void;
+}) {
   const emailAddress = settingString(settings, "contact_email", "");
   const whatsapp = settingString(settings, "whatsapp_number", "");
 
@@ -625,6 +650,15 @@ function UnavailableNotice({ settings }: { settings: SettingsMap }) {
         both.
       </p>
       <div className="flex flex-col gap-2 mt-2 w-full">
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={retrying}
+          className="w-full min-h-10 py-2.5 text-sm font-medium border border-border rounded-sm hover:border-foreground/40 transition-colors disabled:opacity-60 inline-flex items-center justify-center gap-2"
+        >
+          {retrying && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+          {retrying ? "Reconnecting…" : "Try again"}
+        </button>
         {emailAddress && (
           <a
             href={`mailto:${emailAddress}`}

@@ -40,11 +40,11 @@ The short version:
 | `npm run build` | Production build |
 | `npm run preview` | Serve the build |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run seed` | Regenerate `supabase/seed.sql` from `src/data/*` |
+| `npm run seed` | Regenerate `supabase/seed.sql` from `src/data/*` (fails on a reused photograph) |
 | `npm run db:migrate` | Apply `supabase/migrations/*.sql` |
 | `npm run db:reset` | Migrations + seed |
 | `npm run db:verify` | Assert schema, RLS, buckets, realtime, seed, scoring |
-| `npm run db:check` | Exercise the anon key against the live RLS policies |
+| `npm run db:check` | Exercise the anon key against the live RLS policies, the messenger and realtime end to end |
 
 ---
 
@@ -84,7 +84,20 @@ panel over a focused task would be noise.
 - Realtime both directions, with unread badges that survive a closed panel
 - File attachments through a private bucket and signed URLs
 - Full-screen sheet on phones, docked card from `sm` up
-- Degrades to your email and WhatsApp link if the service is unreachable
+- Degrades to your email and WhatsApp link if the service is unreachable,
+  with a **Try again** button — a visitor whose first load raced a dropped
+  connection should not be stuck on the fallback for the whole session
+
+Anonymous sign-ins must be enabled (Authentication → Providers → Anonymous)
+or the panel shows that fallback and nothing else. `npm run db:check` says so
+in as many words when it is off, and when it is on it proves the whole path:
+thread resume, history, read receipts, a realtime round-trip, and that a
+second visitor cannot read the first one's thread.
+
+`db:check` submits real applications, because a mock would prove nothing
+about the RPC or the scoring trigger. It deletes them again afterwards over
+`DIRECT_URL` — the anon key that created them has no DELETE policy, by
+design — so running it repeatedly leaves no residue in the dashboard.
 
 ---
 
@@ -168,6 +181,13 @@ Mobile-first throughout, at Tailwind's `sm` 640 / `md` 768 / `lg` 1024 /
 - `src/data/*.ts` is intentionally still present. It is the fallback content
   **and** the source `npm run seed` generates SQL from, so the sample copy
   stays in one place.
+- No photograph may appear on two listings, and a listing only carries
+  photographs of that dog. `npm run seed` fails rather than emitting SQL that
+  breaks either rule — showing the same dog under two names is the one error
+  an adoption page does not survive. The bundled images are Unsplash
+  placeholders and are overwhelmingly of adult dogs; only the four youngest
+  listings have a genuine puppy frame. Replace them with real photographs
+  (Puppies → Edit → Upload) before going live.
 - The build warns that the JS chunk is over 500 kB. It is a single bundle by
   design for a site this size; route-level `import()` is the fix if it matters
   for your hosting.

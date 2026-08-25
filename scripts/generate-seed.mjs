@@ -31,6 +31,34 @@ const arr = (items) =>
     ? "'{}'::text[]"
     : `array[${items.map(q).join(", ")}]::text[]`;
 
+// ---------------------------------------------------------------------
+// Photography guard
+//
+// A photograph on two listings means a visitor comparing two puppies is
+// shown the same dog twice, which on an adoption site reads as a fake
+// listing. It is easy to reintroduce by copying a seed block, and easy to
+// miss by eye across fifteen puppies — so fail the build instead.
+// ---------------------------------------------------------------------
+const seenPhoto = new Map(); // url -> puppy name
+const photoClashes = [];
+for (const p of puppies) {
+  if (p.photos.length === 0) photoClashes.push(`${p.name} has no photograph`);
+  for (const url of p.photos) {
+    const owner = seenPhoto.get(url);
+    if (owner) photoClashes.push(`${p.name} reuses ${owner}'s photograph: ${url}`);
+    else seenPhoto.set(url, p.name);
+  }
+}
+if (photoClashes.length) {
+  // Thrown rather than process.exit()d: exiting while stdout is still
+  // draining trips a libuv assertion on Windows and buries the message.
+  for (const line of photoClashes) console.error(`  ${line}`);
+  throw new Error(
+    `Photography check failed - ${photoClashes.length} problem(s) listed above.`
+  );
+}
+console.log(`Photography: ${seenPhoto.size} distinct images across ${puppies.length} puppies.`);
+
 const out = [];
 const w = (line = "") => out.push(line);
 

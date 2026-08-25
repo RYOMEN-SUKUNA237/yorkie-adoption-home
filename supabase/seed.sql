@@ -25,7 +25,7 @@ insert into public.puppies (
   'sixpence', 'Sixpence', 'male'::puppy_sex, '2026-06-23'::date,
   'available'::puppy_status, array['bold', 'bright', 'vocal']::text[],
   'Sixpence has decided he is a much larger dog than he is, and nothing we have done has dissuaded him. He announces visitors, supervises the garden, and escorts anyone carrying food. Underneath the bravado he is affectionate and unusually quick — he had sit and wait inside a fortnight. He will suit someone who finds a big personality in a small dog funny rather than tiring, and who will teach him that not every noise requires comment.',
-  array['https://images.unsplash.com/photo-1547482354-89d4259dbc4b?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1526440847959-4e38e7f00b04?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1618760877592-0d80e8b7bd02?w=900&h=1100&fit=crop&auto=format']::text[], 0,
+  array['https://images.unsplash.com/photo-1546527868-ccb7ee7dfa6a?w=900&h=1100&fit=crop&auto=format']::text[], 0,
   (select id from public.parents where name = 'Ch. Brightwater Sixpence' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Silverthorn Penny Royal' and role = 'dam')
 )
@@ -54,7 +54,7 @@ insert into public.puppies (
   'hazel', 'Hazel', 'female'::puppy_sex, '2026-06-23'::date,
   'available'::puppy_status, array['gentle', 'watchful', 'steady']::text[],
   'Hazel is the quiet one of her litter and the last to make up her mind about anything. She watches first, joins second, and once she has decided you are hers she is completely devoted. She is easier company than most Yorkies of this age — less noise, less fuss — but she does not like being left, and a household where someone is usually home would suit her far better than one that is empty all day.',
-  array['https://images.unsplash.com/photo-1611170078485-6c1c9ca31936?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1681853134483-4b9801215145?w=900&h=1100&fit=crop&auto=format']::text[], 1,
+  array['https://images.unsplash.com/photo-1618760877592-0d80e8b7bd02?w=900&h=1100&fit=crop&auto=format']::text[], 1,
   (select id from public.parents where name = 'Ch. Brightwater Sixpence' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Silverthorn Penny Royal' and role = 'dam')
 )
@@ -83,7 +83,7 @@ insert into public.puppies (
   'tuppence', 'Tuppence', 'female'::puppy_sex, '2026-06-09'::date,
   'pending'::puppy_status, array['busy', 'clever', 'mischievous']::text[],
   'Tuppence is a project manager. She rearranges her toys, tests every gap in the fence, and has twice let herself out of a crate we were assured was secure. She is enormously clever and needs that mind occupied — training games, puzzle feeders, something to do. In the right home she will be a joy. In a home with no plan for her, she will make her own entertainment and it will be expensive.',
-  array['https://images.unsplash.com/photo-1546527868-ccb7ee7dfa6a?w=900&h=1100&fit=crop&auto=format']::text[], 2,
+  array['https://images.unsplash.com/photo-1526440847959-4e38e7f00b04?w=900&h=1100&fit=crop&auto=format']::text[], 2,
   (select id from public.parents where name = 'Gr. Ch. Copperfield Bold As Brass' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Moorland Tuppence' and role = 'dam')
 )
@@ -112,7 +112,7 @@ insert into public.puppies (
   'rowan', 'Rowan', 'male'::puppy_sex, '2026-06-30'::date,
   'available'::puppy_status, array['cuddly', 'easygoing', 'sociable']::text[],
   'Rowan is the softest puppy in this litter. He greets everyone, tolerates being carried about by children with visible patience, and falls asleep on whoever sits down first. He has none of the wariness the breed is sometimes known for. For a family who want a small dog that is genuinely easy with visitors and grandchildren, he is the obvious choice.',
-  array['https://images.unsplash.com/photo-1591608971358-f93643d11763?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1547482354-89d4259dbc4b?w=900&h=1100&fit=crop&auto=format']::text[], 3,
+  array['https://images.unsplash.com/photo-1695780963266-6225eff4f853?w=900&h=1100&fit=crop&auto=format']::text[], 3,
   (select id from public.parents where name = 'Ch. Wharfedale Little Admiral' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Harrogate Blue Ribbon' and role = 'dam')
 )
@@ -140,7 +140,7 @@ insert into public.puppies (
   'bramble', 'Bramble', 'male'::puppy_sex, '2026-06-16'::date,
   'available'::puppy_status, array['spirited', 'loyal', 'tenacious']::text[],
   'Bramble is a terrier in the old sense — he will follow a scent to the end of the garden and dig where it stops. He is loyal to the point of shadowing, and he does not much care for other dogs he has not been introduced to properly. An owner who enjoys the terrier temperament rather than apologising for it will get a wonderful dog. He needs a secure garden; he will find any gap there is.',
-  array['https://images.unsplash.com/photo-1526440847959-4e38e7f00b04?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1612830549030-bfb4b58ccd5f?w=900&h=1100&fit=crop&auto=format']::text[], 4,
+  array['https://images.unsplash.com/photo-1611170078485-6c1c9ca31936?w=900&h=1100&fit=crop&auto=format']::text[], 4,
   (select id from public.parents where name = 'Gr. Ch. Copperfield Bold As Brass' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Silverthorn Penny Royal' and role = 'dam')
 )
@@ -169,7 +169,7 @@ insert into public.puppies (
   'penny', 'Penny', 'female'::puppy_sex, '2026-06-02'::date,
   'available'::puppy_status, array['poised', 'elegant', 'confident']::text[],
   'Penny carries herself beautifully and knows it. She stands for grooming without complaint, walks on a lead as though she invented it, and the steel-blue and tan is coming through nicely. She would do well in a show home, but she is not precious — she is equally happy muddy. Confident with strangers, unbothered by noise, and completely unafraid of larger dogs.',
-  array['https://images.unsplash.com/photo-1618760877592-0d80e8b7bd02?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1611170078485-6c1c9ca31936?w=900&h=1100&fit=crop&auto=format']::text[], 5,
+  array['https://images.unsplash.com/photo-1689009480234-e67dc23b437a?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1689009480504-6420452a7e8e?w=900&h=1100&fit=crop&auto=format']::text[], 5,
   (select id from public.parents where name = 'Ch. Wharfedale Little Admiral' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Moorland Tuppence' and role = 'dam')
 )
@@ -198,7 +198,7 @@ insert into public.puppies (
   'otto', 'Otto', 'male'::puppy_sex, '2026-05-26'::date,
   'pending'::puppy_status, array['comic', 'affectionate', 'vocal']::text[],
   'Otto talks constantly — not barking exactly, a running commentary of grumbles and opinions. He is very funny and very affectionate, and he has no interest whatsoever in being quiet. We are being direct about this because it is the thing most likely to matter: he will not suit a flat with thin walls or a household that needs a silent dog. For everyone else he is enormous fun.',
-  array['https://images.unsplash.com/photo-1681853134483-4b9801215145?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1546527868-ccb7ee7dfa6a?w=900&h=1100&fit=crop&auto=format']::text[], 6,
+  array['https://images.unsplash.com/photo-1731027683053-3a025de056c3?w=900&h=1100&fit=crop&auto=format']::text[], 6,
   (select id from public.parents where name = 'Ch. Brightwater Sixpence' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Harrogate Blue Ribbon' and role = 'dam')
 )
@@ -227,7 +227,7 @@ insert into public.puppies (
   'willow', 'Willow', 'female'::puppy_sex, '2026-07-07'::date,
   'available'::puppy_status, array['delicate', 'sweet', 'new']::text[],
   'Willow is our smallest and will stay with her mother longer than the others. We do not let the little ones go early, and with a puppy this size we watch weight and blood sugar closely before she travels anywhere. She is sweet-natured and seeks out warmth and company. We list her now because families wanting a very young puppy usually need time to prepare.',
-  array['https://images.unsplash.com/photo-1612830549030-bfb4b58ccd5f?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1650132392843-cb49902dfcf1?w=900&h=1100&fit=crop&auto=format']::text[], 7,
+  array['https://images.unsplash.com/photo-1654101437386-9fdf9469c769?w=900&h=1100&fit=crop&auto=format']::text[], 7,
   (select id from public.parents where name = 'Ch. Wharfedale Little Admiral' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Silverthorn Penny Royal' and role = 'dam')
 )
@@ -251,7 +251,7 @@ insert into public.puppies (
   'flint', 'Flint', 'male'::puppy_sex, '2026-05-12'::date,
   'available'::puppy_status, array['independent', 'calm', 'assured']::text[],
   'We held Flint back a few weeks to watch how his coat and temperament settled, and both have come along well. He is more self-contained than most of the breed — affectionate when he chooses, content alone in a room, unfussed by an ordinary working morning. If the separation anxiety Yorkies are prone to has put you off the breed, Flint is the one to ask about.',
-  array['https://images.unsplash.com/photo-1547482354-89d4259dbc4b?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1681853134483-4b9801215145?w=900&h=1100&fit=crop&auto=format']::text[], 8,
+  array['https://images.unsplash.com/photo-1612830549030-bfb4b58ccd5f?w=900&h=1100&fit=crop&auto=format']::text[], 8,
   (select id from public.parents where name = 'Gr. Ch. Copperfield Bold As Brass' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Moorland Tuppence' and role = 'dam')
 )
@@ -280,7 +280,7 @@ insert into public.puppies (
   'marigold', 'Marigold', 'female'::puppy_sex, '2026-06-09'::date,
   'available'::puppy_status, array['playful', 'brave', 'affectionate']::text[],
   'Marigold plays until she falls over, sleeps hard, and starts again. She is brave with new things and recovers quickly when something startles her, which is a temperament we like very much in this breed. She is affectionate without being clingy. A busy household with children old enough to handle a small dog carefully would suit her perfectly.',
-  array['https://images.unsplash.com/photo-1659946431902-2786bdd0b39d?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1618760877592-0d80e8b7bd02?w=900&h=1100&fit=crop&auto=format']::text[], 9,
+  array['https://images.unsplash.com/photo-1659946431902-2786bdd0b39d?w=900&h=1100&fit=crop&auto=format']::text[], 9,
   (select id from public.parents where name = 'Ch. Brightwater Sixpence' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Moorland Tuppence' and role = 'dam')
 )
@@ -309,7 +309,7 @@ insert into public.puppies (
   'jasper', 'Jasper', 'male'::puppy_sex, '2026-05-19'::date,
   'pending'::puppy_status, array['devoted', 'quiet', 'sensitive']::text[],
   'Jasper is sensitive in the good sense — he reads a room accurately and adjusts. He is quiet for a Yorkie and forms an intense attachment to one person in particular. He would be miserable in a chaotic home and wonderful in a calm one, especially with someone often at home. He does not enjoy being talked over or picked up without warning.',
-  array['https://images.unsplash.com/photo-1546527868-ccb7ee7dfa6a?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1526440847959-4e38e7f00b04?w=900&h=1100&fit=crop&auto=format']::text[], 10,
+  array['https://images.unsplash.com/photo-1633291294388-3e73294ab65f?w=900&h=1100&fit=crop&auto=format']::text[], 10,
   (select id from public.parents where name = 'Ch. Wharfedale Little Admiral' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Harrogate Blue Ribbon' and role = 'dam')
 )
@@ -338,7 +338,7 @@ insert into public.puppies (
   'nutmeg', 'Nutmeg', 'female'::puppy_sex, '2026-07-14'::date,
   'available'::puppy_status, array['tiny', 'curious', 'new']::text[],
   'Nutmeg is a few weeks from being ready and is not yet reserved. She is curious about everything and already climbing out of places she should not be able to reach. Too young to say much about her adult temperament, but she is confident with handling and eating well, which is what we look for at this stage.',
-  array['https://images.unsplash.com/photo-1650132392843-cb49902dfcf1?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1612830549030-bfb4b58ccd5f?w=900&h=1100&fit=crop&auto=format']::text[], 11,
+  array['https://images.unsplash.com/photo-1546527762-f0234da4e9c8?w=900&h=1100&fit=crop&auto=format']::text[], 11,
   (select id from public.parents where name = 'Gr. Ch. Copperfield Bold As Brass' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Silverthorn Penny Royal' and role = 'dam')
 )
@@ -362,7 +362,7 @@ insert into public.puppies (
   'barnaby', 'Barnaby', 'male'::puppy_sex, '2026-01-13'::date,
   'placed'::puppy_status, array['settled', 'affectionate', 'characterful']::text[],
   'Barnaby went to a couple in Edinburgh earlier this year. They send photographs regularly. He has, we are told, taken firm possession of the sunniest windowsill in the flat and defends it against all comers, including the postman, who is outside and cannot hear him.',
-  array['https://images.unsplash.com/photo-1526440847959-4e38e7f00b04?w=900&h=1100&fit=crop&auto=format']::text[], 12,
+  array['https://images.unsplash.com/photo-1610389712622-73f621ff06bf?w=900&h=1100&fit=crop&auto=format']::text[], 12,
   (select id from public.parents where name = 'Ch. Brightwater Sixpence' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Harrogate Blue Ribbon' and role = 'dam')
 )
@@ -392,7 +392,7 @@ insert into public.puppies (
   'clover', 'Clover', 'female'::puppy_sex, '2025-12-02'::date,
   'placed'::puppy_status, array['bright', 'adaptable', 'loving']::text[],
   'Clover found her family in Manchester and settled in immediately, including with the resident cat, who reportedly outranks her and is not challenged on it.',
-  array['https://images.unsplash.com/photo-1618760877592-0d80e8b7bd02?w=900&h=1100&fit=crop&auto=format']::text[], 13,
+  array['https://images.unsplash.com/photo-1574760112346-8443c3773437?w=900&h=1100&fit=crop&auto=format']::text[], 13,
   (select id from public.parents where name = 'Ch. Wharfedale Little Admiral' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Moorland Tuppence' and role = 'dam')
 )
@@ -422,7 +422,7 @@ insert into public.puppies (
   'atticus', 'Atticus', 'male'::puppy_sex, '2025-10-21'::date,
   'placed'::puppy_status, array['confident', 'loyal', 'spirited']::text[],
   'Atticus was placed with a retired couple who wanted a small companion with a large personality. By all accounts they got exactly what they asked for and have no regrets whatsoever.',
-  array['https://images.unsplash.com/photo-1547482354-89d4259dbc4b?w=900&h=1100&fit=crop&auto=format']::text[], 14,
+  array['https://images.unsplash.com/photo-1650132392843-cb49902dfcf1?w=900&h=1100&fit=crop&auto=format']::text[], 14,
   (select id from public.parents where name = 'Gr. Ch. Copperfield Bold As Brass' and role = 'sire'),
   (select id from public.parents where name = 'Ch. Harrogate Blue Ribbon' and role = 'dam')
 )
