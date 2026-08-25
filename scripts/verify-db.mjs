@@ -172,9 +172,12 @@ try {
   Number(row.score) === 10
     ? pass(`ideal application scored ${row.score}/10`)
     : fail(`ideal application scored ${row.score}/10, expected 10`);
-  row.factors === 8
+  // Nine factors in this breed's rubric: the eight shared ones plus
+  // "Handling risk", which scores on the youngest child's age because an
+  // adult Yorkshire Terrier weighs two to three kilograms.
+  row.factors === 9
     ? pass(`${row.factors} scoring factors recorded`)
-    : fail(`${row.factors} factors, expected 8`);
+    : fail(`${row.factors} factors, expected 9`);
 } finally {
   await client.query("rollback");
 }
