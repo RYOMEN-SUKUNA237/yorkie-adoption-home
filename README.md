@@ -176,6 +176,44 @@ Mobile-first throughout, at Tailwind's `sm` 640 / `md` 768 / `lg` 1024 /
 
 ---
 
+## Deployment
+
+Production is Vercel, project `yorkshire-adoption-home`, deployed from `main`
+with `vercel --prod`. `vercel.json` carries the SPA rewrite: without it every
+route but `/` returns 404 on a hard refresh, because the client router owns
+the paths.
+
+The site is served at **yorkieadoptionhome.com**, registered at Northwest
+Registered Agent, which also holds the DNS. Vercel treats `www` as the
+primary hostname and 308-redirects the apex to it, so both records matter:
+
+| Type | Host  | Value         |
+| ---- | ----- | ------------- |
+| A    | `@`   | `76.76.21.21` |
+| A    | `www` | `76.76.21.21` |
+
+A `CNAME` on `www` pointing at `cname.vercel-dns.com.` is the more usual
+choice, and Northwest accepts it — with the trailing dot, as it rejects any
+value that is not fully qualified. It was abandoned here: twenty minutes
+after it was saved `ns2` served it while `ns1` still answered `NXDOMAIN` for
+`www`, both reporting the *same* SOA serial, so roughly half of all lookups
+failed. The A record that replaced it was consistent on both nameservers
+within two minutes. Prefer the A records.
+
+Three environment variables must exist in Vercel for every environment —
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SITE_NAME`. Vite inlines
+them at build time, so changing one needs a redeploy, not a restart.
+
+Supabase has to be told the domain too, or password recovery breaks on it:
+the reset link is built from `window.location.origin`, and GoTrue refuses a
+`redirectTo` that is not allow-listed, falling back to the Site URL. Set
+Authentication → URL Configuration → Site URL to
+`https://www.yorkieadoptionhome.com`, and list both
+`https://www.yorkieadoptionhome.com/**` and
+`https://yorkieadoptionhome.com/**` as Redirect URLs.
+
+---
+
 ## Notes
 
 - `src/data/*.ts` is intentionally still present. It is the fallback content
