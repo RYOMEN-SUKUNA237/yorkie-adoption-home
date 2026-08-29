@@ -272,13 +272,15 @@ export default function EmailsAdmin() {
       )}
 
       {/* Inbound Webhook Help Guide Modal */}
-      {webhookHelpOpen && <WebhookHelpModal onClose={() => setWebhookHelpOpen(false)} />}
+      {webhookHelpOpen && <WebhookHelpModal onClose={() => setWebhookHelpOpen(false)} onRefresh={() => emails.reload()} />}
     </>
   );
 }
 
-function WebhookHelpModal({ onClose }: { onClose: () => void }) {
+function WebhookHelpModal({ onClose, onRefresh }: { onClose: () => void; onRefresh: () => void }) {
   const [copied, setCopied] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
   const webhookUrl = "https://www.yorkieadoptionhome.com/api/inbound-email";
 
   const handleCopy = () => {
@@ -287,43 +289,107 @@ function WebhookHelpModal({ onClose }: { onClose: () => void }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleTestWebhook = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/inbound-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "test-client@example.com",
+          to: "support@yorkieadoptionhome.com",
+          subject: "Test Inbound Email — " + new Date().toLocaleTimeString(),
+          text: "This is a test email to verify the inbound email pipeline is working correctly.",
+          html: "<p>This is a <strong>test email</strong> to verify the inbound email pipeline is working correctly.</p>",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTestResult("✓ Test email successfully saved! Click Refresh to see it in your Inbox.");
+        onRefresh();
+      } else {
+        setTestResult("✗ Test failed: " + (data.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      setTestResult("✗ Error: " + err.message);
+    } finally {
+      setTesting(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-background border border-border rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-background border border-border rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4 my-auto">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <h3 className="text-base font-semibold text-foreground">How to Receive Inbound Emails</h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
         </div>
 
-        <div className="space-y-3 text-sm text-foreground leading-relaxed">
-          <p>
-            When a client sends an email to <strong className="text-primary font-mono">support@yorkieadoptionhome.com</strong>, Resend forwards it to your site via Webhook.
-          </p>
+        <div className="space-y-4 text-sm text-foreground leading-relaxed">
 
-          <div className="bg-sidebar p-3 rounded-lg border border-border space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Live Webhook URL:</p>
-            <div className="flex items-center gap-2">
-              <input
-                readOnly
-                value={webhookUrl}
-                className="flex-1 bg-background border border-border rounded px-2.5 py-1.5 text-xs font-mono select-all text-foreground"
-              />
-              <Button size="sm" variant="secondary" onClick={handleCopy}>
-                {copied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                {copied ? "Copied" : "Copy"}
-              </Button>
+          {/* Test section */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+            <p className="text-xs font-semibold text-blue-800">🧪 Test Your Inbox Right Now</p>
+            <p className="text-xs text-blue-700">
+              Click below to simulate an inbound email — this will instantly add a test email to your Inbox so you can verify the inbox tab is working:
+            </p>
+            <Button size="sm" variant="primary" onClick={handleTestWebhook} disabled={testing}>
+              {testing ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
+              Send Test Email to Inbox
+            </Button>
+            {testResult && (
+              <p className={`text-xs font-medium mt-1 ${testResult.startsWith("✓") ? "text-emerald-700" : "text-red-600"}`}>
+                {testResult}
+              </p>
+            )}
+          </div>
+
+          {/* DNS Setup */}
+          <div>
+            <p className="font-semibold text-foreground mb-2">For Real Inbound Emails from Clients:</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              To receive emails sent to <strong className="text-primary font-mono">support@yorkieadoptionhome.com</strong> in this inbox, you need to complete two steps:
+            </p>
+
+            <div className="space-y-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-xs font-bold text-amber-800 mb-1">Step 1 — Add MX Record in Cloudflare/DNS</p>
+                <p className="text-xs text-amber-700 mb-2">Log into your domain registrar (where you manage DNS for yorkieadoptionhome.com) and add this MX record:</p>
+                <div className="font-mono text-xs bg-white border border-amber-200 rounded p-2 space-y-1">
+                  <div><span className="text-muted-foreground">Type:</span> <strong>MX</strong></div>
+                  <div><span className="text-muted-foreground">Name:</span> <strong>support</strong> (or <strong>@</strong> for all)</div>
+                  <div><span className="text-muted-foreground">Value:</span> <strong>inbound.resend.com</strong></div>
+                  <div><span className="text-muted-foreground">Priority:</span> <strong>10</strong></div>
+                </div>
+              </div>
+
+              <div className="bg-sidebar p-3 rounded-lg border border-border space-y-2">
+                <p className="text-xs font-bold text-foreground">Step 2 — Add Webhook in Resend Dashboard</p>
+                <p className="text-xs text-muted-foreground">Your live webhook URL:</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={webhookUrl}
+                    className="flex-1 bg-background border border-border rounded px-2.5 py-1.5 text-xs font-mono select-all text-foreground"
+                  />
+                  <Button size="sm" variant="secondary" onClick={handleCopy}>
+                    {copied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                    {copied ? "Copied" : "Copy"}
+                  </Button>
+                </div>
+                <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
+                  <li>Open your <a href="https://resend.com/webhooks" target="_blank" rel="noreferrer" className="text-primary underline">Resend Webhooks Dashboard</a>.</li>
+                  <li>Click <strong>+ Add Webhook</strong>.</li>
+                  <li>Paste the URL above and select event: <strong>email.received</strong>.</li>
+                  <li>Click <strong>Add Webhook</strong>.</li>
+                </ol>
+              </div>
             </div>
           </div>
 
-          <ol className="list-decimal list-inside space-y-1.5 text-xs text-muted-foreground">
-            <li>Open your <a href="https://resend.com/webhooks" target="_blank" rel="noreferrer" className="text-primary underline">Resend Webhooks Dashboard</a>.</li>
-            <li>Click <strong>+ Add Webhook</strong>.</li>
-            <li>Paste your Webhook URL above.</li>
-            <li>Select event: <strong>email.received</strong> (or select All events).</li>
-            <li>Click <strong>Add Webhook</strong>.</li>
-          </ol>
           <p className="text-xs text-emerald-700 bg-emerald-50 p-2 rounded border border-emerald-200">
-            ✓ Done! Once added, every incoming email to support@yorkieadoptionhome.com will immediately show up in your Inbox tab and alert your 2 notification emails.
+            ✓ Once both steps are done, every incoming email to support@yorkieadoptionhome.com will immediately appear in your Inbox and alert both admin Gmail accounts.
           </p>
         </div>
 

@@ -251,38 +251,35 @@ export async function updateApplicationStatus(
 
   if (error) throw error;
 
-  // Automated notification dispatch on approval without human intervention
+  // Automated notification dispatch on approval — always notify via all available channels
   if (status === "approved") {
     try {
       const app = await getApplication(id);
       if (app) {
-        const pref = app.notification_preference || "email";
         const origin = typeof window !== "undefined" ? window.location.origin : "https://www.yorkieadoptionhome.com";
         const certUrl = `${origin}/certificate/${app.reference || app.id}`;
         const applicantName = `${app.first_name} ${app.last_name}`;
 
-        // 1. Send Email if preference is 'email' or 'both'
-        if (pref === "email" || pref === "both") {
-          void fetch("/api/send-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "application_approved",
-              payload: {
-                applicantEmail: app.email,
-                applicantName,
-                reference: app.reference,
-                puppyName: app.puppy_name || "Yorkshire Puppy",
-                applicationId: app.reference || app.id,
-              },
-            }),
-          });
-        }
+        // 1. ALWAYS send approval email to the applicant
+        void fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "application_approved",
+            payload: {
+              applicantEmail: app.email,
+              applicantName,
+              reference: app.reference,
+              puppyName: app.puppy_name || "Yorkshire Puppy",
+              applicationId: app.reference || app.id,
+            },
+          }),
+        });
 
-        // 2. Send WhatsApp if preference is 'whatsapp' or 'both'
-        if (pref === "whatsapp" || pref === "both") {
-          const recipientPhone = app.applicant_whatsapp || app.phone;
-          const waMessage = `🎉 Hello ${applicantName}! Your adoption application (${app.reference}) for ${app.puppy_name || "a Yorkshire puppy"} has been APPROVED!\n\nPlease view your official Proof Certificate here:\n${certUrl}\n\n👉 REQUIRED STEP: Please reach out to the seller to complete final verification.`;
+        // 2. ALWAYS send WhatsApp if any phone number is on record
+        const recipientPhone = app.applicant_whatsapp || app.phone;
+        if (recipientPhone) {
+          const waMessage = `🎉 Hello ${applicantName}! Your adoption application (${app.reference}) for ${app.puppy_name || "a Yorkshire puppy"} has been APPROVED!\n\nPlease view your official Proof Certificate here:\n${certUrl}\n\n👉 REQUIRED STEP: Please contact the seller via the website to complete final verification and pickup arrangements.`;
 
           void fetch("/api/send-whatsapp", {
             method: "POST",
