@@ -1,18 +1,24 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "../router";
-import { getApplication } from "../../services/applications";
+import { getApprovalCertificate } from "../../services/applications";
 import { useSettings } from "../../lib/settings";
 import { settingString } from "../../services/misc";
 import type { ApplicationRow } from "../../lib/database.types";
 import { formatDate } from "../../lib/format";
 import {
-  CheckCircle2, Printer, ShieldCheck, MessageCircle, AlertCircle, Dog, Home, ArrowLeft, Loader2
+  CheckCircle2, Printer, ShieldCheck, MessageCircle, AlertCircle, Dog, ArrowLeft, Loader2, Download
 } from "lucide-react";
 
-export default function AdoptionCertificate() {
-  const { getParam, navigate } = useRouter();
+export default function AdoptionCertificate({ certificateId }: { certificateId?: string }) {
+  const { getParam, navigate, path } = useRouter();
   const { settings } = useSettings();
-  const id = getParam("id");
+
+  // Robust ID resolution: from props, query param ?id=, or URL path (/certificate/:id)
+  const pathId = typeof window !== "undefined"
+    ? window.location.pathname.replace(/^\/(certificate|approval-proof)\/?/, "").split("/")[0].trim()
+    : path.replace(/^\/(certificate|approval-proof)\/?/, "").split("/")[0].trim();
+
+  const id = certificateId || getParam("id") || pathId;
 
   const [application, setApplication] = useState<ApplicationRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,15 +29,15 @@ export default function AdoptionCertificate() {
 
   useEffect(() => {
     if (!id) {
-      setError("No application ID provided.");
+      setError("No application reference or ID provided in URL.");
       setLoading(false);
       return;
     }
 
-    getApplication(id)
+    getApprovalCertificate(id)
       .then((data) => {
         if (!data) {
-          setError("Application record not found.");
+          setError("Adoption approval certificate not found or reference is invalid.");
         } else {
           setApplication(data);
         }
@@ -47,7 +53,7 @@ export default function AdoptionCertificate() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="flex items-center gap-3 bg-white p-6 rounded-xl shadow-md border border-slate-100">
           <Loader2 className="animate-spin text-red-700" size={24} />
-          <span className="text-slate-700 font-medium">Verifying adoption proof...</span>
+          <span className="text-slate-700 font-medium">Verifying adoption certificate...</span>
         </div>
       </div>
     );
@@ -75,13 +81,13 @@ export default function AdoptionCertificate() {
 
   const cleanWaNumber = sellerWhatsApp.replace(/\D/g, "");
   const waUrl = `https://wa.me/${cleanWaNumber}?text=${encodeURIComponent(
-    `Hello! My application (${application.reference}) for ${application.puppy_name || "a Yorkshire puppy"} has been approved. I am reaching out to complete final verification.`
+    `Hello! My application (${application.reference}) for ${application.puppy_name || "a Yorkshire puppy"} has been approved. I am reaching out with my Proof Certificate to complete final verification.`
   )}`;
 
   return (
     <div className="min-h-screen bg-slate-100 py-10 px-4 sm:px-6 print:bg-white print:py-0 print:px-0">
       {/* Top Action Bar (Hidden on Print) */}
-      <div className="max-w-3xl mx-auto mb-6 flex items-center justify-between print:hidden">
+      <div className="max-w-3xl mx-auto mb-6 flex flex-wrap items-center justify-between gap-4 print:hidden">
         <button
           onClick={() => navigate("/")}
           className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 font-medium"
@@ -89,12 +95,19 @@ export default function AdoptionCertificate() {
           <ArrowLeft size={16} /> Back to Site
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-sm font-semibold shadow-sm transition-colors"
+          >
+            <Download size={16} /> Download / Save PDF
+          </button>
+
           <button
             onClick={() => window.print()}
             className="inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 hover:text-slate-900 border border-slate-300 rounded-lg text-sm font-semibold shadow-sm hover:bg-slate-50 transition-colors"
           >
-            <Printer size={16} /> Print Certificate
+            <Printer size={16} /> Print
           </button>
 
           <a

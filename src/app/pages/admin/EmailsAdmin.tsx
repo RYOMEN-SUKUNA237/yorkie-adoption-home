@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Search, Mail, Send, Inbox, ArrowUpRight, ArrowDownLeft, RefreshCw, Trash2,
-  Reply, Loader2, CheckCircle2, Clock, Eye, AlertCircle
+  Reply, Loader2, CheckCircle2, Clock, Eye, AlertCircle, HelpCircle, Copy, Check
 } from "lucide-react";
 import { useAsync, useDebounced, useMediaQuery } from "../../../hooks/useAsync";
 import { listEmails, deleteEmail, markEmailRead } from "../../../services/emails";
@@ -20,6 +20,7 @@ export default function EmailsAdmin() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [webhookHelpOpen, setWebhookHelpOpen] = useState(false);
   const [replyToEmail, setReplyToEmail] = useState<{ email: string; subject: string; name?: string } | null>(null);
 
   const debouncedSearch = useDebounced(search, 300);
@@ -58,8 +59,11 @@ export default function EmailsAdmin() {
         subtitle="Manage incoming replies and outgoing emails sent from support@yorkieadoptionhome.com"
         actions={
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setWebhookHelpOpen(true)} title="Inbound Setup Guide">
+              <HelpCircle size={13} /> Receiving Guide
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => emails.reload()} title="Refresh mailbox">
-              <RefreshCw size={13} className={emails.loading ? "animate-spin" : ""} />
+              <RefreshCw size={13} className={emails.loading ? "animate-spin" : ""} /> Refresh
             </Button>
             <Button size="sm" variant="primary" onClick={() => { setReplyToEmail(null); setComposeOpen(true); }}>
               <Mail size={13} /> Compose Email
@@ -104,8 +108,8 @@ export default function EmailsAdmin() {
                 <EmptyState
                   title="No emails found"
                   description={
-                    search || filter !== "all"
-                      ? "Try a different filter or search term."
+                    filter === "incoming"
+                      ? "Received client replies to support@yorkieadoptionhome.com will appear here."
                       : "Emails sent to clients and incoming replies will appear here."
                   }
                 />
@@ -266,7 +270,68 @@ export default function EmailsAdmin() {
           }}
         />
       )}
+
+      {/* Inbound Webhook Help Guide Modal */}
+      {webhookHelpOpen && <WebhookHelpModal onClose={() => setWebhookHelpOpen(false)} />}
     </>
+  );
+}
+
+function WebhookHelpModal({ onClose }: { onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const webhookUrl = "https://www.yorkieadoptionhome.com/api/inbound-email";
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-background border border-border rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <h3 className="text-base font-semibold text-foreground">How to Receive Inbound Emails</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
+        </div>
+
+        <div className="space-y-3 text-sm text-foreground leading-relaxed">
+          <p>
+            When a client sends an email to <strong className="text-primary font-mono">support@yorkieadoptionhome.com</strong>, Resend forwards it to your site via Webhook.
+          </p>
+
+          <div className="bg-sidebar p-3 rounded-lg border border-border space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Live Webhook URL:</p>
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={webhookUrl}
+                className="flex-1 bg-background border border-border rounded px-2.5 py-1.5 text-xs font-mono select-all text-foreground"
+              />
+              <Button size="sm" variant="secondary" onClick={handleCopy}>
+                {copied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          </div>
+
+          <ol className="list-decimal list-inside space-y-1.5 text-xs text-muted-foreground">
+            <li>Open your <a href="https://resend.com/webhooks" target="_blank" rel="noreferrer" className="text-primary underline">Resend Webhooks Dashboard</a>.</li>
+            <li>Click <strong>+ Add Webhook</strong>.</li>
+            <li>Paste your Webhook URL above.</li>
+            <li>Select event: <strong>email.received</strong> (or select All events).</li>
+            <li>Click <strong>Add Webhook</strong>.</li>
+          </ol>
+          <p className="text-xs text-emerald-700 bg-emerald-50 p-2 rounded border border-emerald-200">
+            ✓ Done! Once added, every incoming email to support@yorkieadoptionhome.com will immediately show up in your Inbox tab and alert your 2 notification emails.
+          </p>
+        </div>
+
+        <div className="flex justify-end pt-3 border-t border-border">
+          <Button variant="primary" size="sm" onClick={onClose}>Got it</Button>
+        </div>
+      </div>
+    </div>
   );
 }
 

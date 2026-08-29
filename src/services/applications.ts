@@ -221,6 +221,16 @@ export async function getApplication(id: string): Promise<ApplicationRow | null>
   return (data as ApplicationRow) ?? null;
 }
 
+export async function getApprovalCertificate(lookupKey: string): Promise<ApplicationRow | null> {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc("get_approval_certificate", { lookup_key: lookupKey });
+  if (error) {
+    console.warn("getApprovalCertificate RPC error:", error);
+    return await getApplication(lookupKey);
+  }
+  return (data as ApplicationRow) ?? null;
+}
+
 export async function updateApplicationStatus(
   id: string,
   status: ApplicationStatus,
@@ -247,7 +257,8 @@ export async function updateApplicationStatus(
       const app = await getApplication(id);
       if (app) {
         const pref = app.notification_preference || "email";
-        const certUrl = `${typeof window !== "undefined" ? window.location.origin : "https://yorkshire-adoption-home.vercel.app"}/certificate/${app.id}`;
+        const origin = typeof window !== "undefined" ? window.location.origin : "https://www.yorkieadoptionhome.com";
+        const certUrl = `${origin}/certificate/${app.reference || app.id}`;
         const applicantName = `${app.first_name} ${app.last_name}`;
 
         // 1. Send Email if preference is 'email' or 'both'
@@ -262,7 +273,7 @@ export async function updateApplicationStatus(
                 applicantName,
                 reference: app.reference,
                 puppyName: app.puppy_name || "Yorkshire Puppy",
-                applicationId: app.id,
+                applicationId: app.reference || app.id,
               },
             }),
           });
@@ -278,6 +289,7 @@ export async function updateApplicationStatus(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               recipientPhone,
+              recipientName: applicantName,
               message: waMessage,
               reference: app.reference,
               certUrl,
