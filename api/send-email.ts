@@ -1,4 +1,39 @@
 import nodemailer from "nodemailer";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://ynvdvsnrnhvmauszfhtf.supabase.co";
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_-cJUoLQ3qg2Qpyt9aziSeg_AGgpF9Gn";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const ADMIN_NOTIFY_EMAILS = [
+  "ntuhgireseelezanw@gmail.com",
+  "yannickngwa844@gmail.com",
+];
+
+async function logEmail(entry: {
+  direction: "incoming" | "outgoing";
+  from_email: string;
+  from_name?: string;
+  to_email: string;
+  subject: string;
+  body_text?: string;
+  body_html?: string;
+}) {
+  try {
+    await supabase.from("emails").insert({
+      direction: entry.direction,
+      from_email: entry.from_email,
+      from_name: entry.from_name || null,
+      to_email: entry.to_email,
+      subject: entry.subject,
+      body_text: entry.body_text || null,
+      body_html: entry.body_html || null,
+      status: "sent",
+    });
+  } catch (err) {
+    console.warn("[api/send-email] Failed to log email to database:", err);
+  }
+}
 
 async function dispatchEmail(options: {
   to: string;
@@ -7,6 +42,7 @@ async function dispatchEmail(options: {
   text?: string;
   replyTo?: string;
   fromName?: string;
+  isClientFacing?: boolean;
 }) {
   const adminNotifyUser = process.env.GMAIL_USER || "ntuhgireseelezanw@gmail.com";
   const pass = (process.env.GMAIL_APP_PASSWORD || "bzcepcaknyhyazexr").replace(/\s+/g, "");
@@ -14,10 +50,9 @@ async function dispatchEmail(options: {
 
   const defaultFromAddress = process.env.FROM_EMAIL || "support@yorkieadoptionhome.com";
   const defaultReplyTo = options.replyTo || defaultFromAddress;
+  const fromName = options.fromName || "Yorkshire Adoption Home";
 
   if (resendApiKey) {
-    const fromName = options.fromName || "Yorkshire Adoption Home";
-
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -38,6 +73,19 @@ async function dispatchEmail(options: {
     if (!res.ok) {
       throw new Error(data.message || JSON.stringify(data));
     }
+
+    if (options.isClientFacing) {
+      await logEmail({
+        direction: "outgoing",
+        from_email: defaultFromAddress,
+        from_name: fromName,
+        to_email: options.to,
+        subject: options.subject,
+        body_text: options.text,
+        body_html: options.html,
+      });
+    }
+
     return data;
   } else {
     // Gmail SMTP fallback
@@ -46,14 +94,28 @@ async function dispatchEmail(options: {
       auth: { user: adminNotifyUser, pass },
     });
 
-    return await transporter.sendMail({
-      from: `"${options.fromName || "Yorkshire Adoption Home"}" <${defaultFromAddress}>`,
+    const result = await transporter.sendMail({
+      from: `"${fromName}" <${defaultFromAddress}>`,
       to: options.to,
       replyTo: defaultReplyTo,
       subject: options.subject,
       html: options.html,
       text: options.text,
     });
+
+    if (options.isClientFacing) {
+      await logEmail({
+        direction: "outgoing",
+        from_email: defaultFromAddress,
+        from_name: fromName,
+        to_email: options.to,
+        subject: options.subject,
+        body_text: options.text,
+        body_html: options.html,
+      });
+    }
+
+    return result;
   }
 }
 
@@ -71,8 +133,6 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const notifyUser = process.env.GMAIL_USER || "ntuhgireseelezanw@gmail.com";
-
   try {
     const { type, payload } = req.body || {};
 
@@ -87,85 +147,97 @@ export default async function handler(req: any, res: any) {
     if (type === "new_message") {
       const { visitorName, visitorEmail, body, subject } = payload;
 
-      await dispatchEmail({
-        to: notifyUser,
-        fromName: "Yorkshire Adoption Home Messenger",
-        subject: `[New Support Message] ${subject || "Inquiry"} from ${visitorName || "Visitor"}`,
-        text: `New support message from ${visitorName || "Visitor"} (${visitorEmail || "No email"})\n\nMessage:\n${body}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; background-color: #ffffff;">
-            <h2 style="color: #991b1b; margin-top: 0;">New Support Message Received</h2>
-            <p style="color: #4b5563;">A visitor has sent a support message on Yorkshire Adoption Home.</p>
-            <div style="background-color: #f9fafb; border-left: 4px solid #991b1b; padding: 16px; margin: 20px 0;">
-              <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${visitorName || "Anonymous"}</p>
-              <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${visitorEmail || "Not provided"}</p>
-              <p style="margin: 0;"><strong>Message:</strong></p>
-              <p style="margin: 8px 0 0 0; color: #1f2937; white-space: pre-wrap;">${body}</p>
-            </div>
-            <p style="font-size: 13px; color: #6b7280;">Log in to the dashboard to reply to this message directly.</p>
-          </div>
-        `,
-      });
+      // Send simultaneously to both admin notification inboxes
+      await Promise.all(
+        ADMIN_NOTIFY_EMAILS.map((adminEmail) =>
+          dispatchEmail({
+            to: adminEmail,
+            fromName: "Yorkshire Adoption Home Messenger",
+            subject: `[New Support Message] ${subject || "Inquiry"} from ${visitorName || "Visitor"}`,
+            text: `New support message from ${visitorName || "Visitor"} (${visitorEmail || "No email"})\n\nMessage:\n${body}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; background-color: #ffffff;">
+                <h2 style="color: #991b1b; margin-top: 0;">New Support Message Received</h2>
+                <p style="color: #4b5563;">A visitor has sent a support message on Yorkshire Adoption Home.</p>
+                <div style="background-color: #f9fafb; border-left: 4px solid #991b1b; padding: 16px; margin: 20px 0;">
+                  <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${visitorName || "Anonymous"}</p>
+                  <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${visitorEmail || "Not provided"}</p>
+                  <p style="margin: 0;"><strong>Message:</strong></p>
+                  <p style="margin: 8px 0 0 0; color: #1f2937; white-space: pre-wrap;">${body}</p>
+                </div>
+                <p style="font-size: 13px; color: #6b7280;">Log in to the dashboard to reply to this message directly.</p>
+              </div>
+            `,
+            isClientFacing: false,
+          })
+        )
+      );
 
-      return res.status(200).json({ success: true, message: "Support message email notification sent." });
+      return res.status(200).json({ success: true, message: "Support message notifications sent to admin emails." });
     }
 
     if (type === "new_application") {
       const { reference, firstName, lastName, email, phone, puppyName, score, city, country } = payload;
 
-      await dispatchEmail({
-        to: notifyUser,
-        fromName: "Yorkshire Adoption Home System",
-        subject: `[New Application] ${reference} - ${firstName} ${lastName} (${puppyName || "Any Puppy"})`,
-        text: `New adoption application received.\nReference: ${reference}\nApplicant: ${firstName} ${lastName}\nEmail: ${email}\nPhone: ${phone}\nLocation: ${city}, ${country}\nPuppy: ${puppyName || "Any"}\nScore: ${score}/100`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; background-color: #ffffff;">
-            <div style="background-color: #991b1b; color: #ffffff; padding: 16px; border-radius: 6px 6px 0 0; text-align: center;">
-              <h2 style="margin: 0; font-size: 20px;">New Adoption Application Submitted</h2>
-            </div>
-            <div style="padding: 20px 0;">
-              <p style="font-size: 15px; color: #374151;">A new adoption application has been submitted and scored by the system.</p>
-              
-              <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
-                <tr>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Reference:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${reference}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Applicant:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${firstName} ${lastName}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Email:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee;"><a href="mailto:${email}">${email}</a></td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Phone:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${phone}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Location:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${city}, ${country}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Puppy Preferred:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${puppyName || "Open to any puppy"}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Rubric Score:</td>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #059669;">${score ?? "N/A"} / 100</td>
-                </tr>
-              </table>
+      // Send simultaneously to both admin notification inboxes
+      await Promise.all(
+        ADMIN_NOTIFY_EMAILS.map((adminEmail) =>
+          dispatchEmail({
+            to: adminEmail,
+            fromName: "Yorkshire Adoption Home System",
+            subject: `[New Application] ${reference} - ${firstName} ${lastName} (${puppyName || "Any Puppy"})`,
+            text: `New adoption application received.\nReference: ${reference}\nApplicant: ${firstName} ${lastName}\nEmail: ${email}\nPhone: ${phone}\nLocation: ${city}, ${country}\nPuppy: ${puppyName || "Any"}\nScore: ${score}/100`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; background-color: #ffffff;">
+                <div style="background-color: #991b1b; color: #ffffff; padding: 16px; border-radius: 6px 6px 0 0; text-align: center;">
+                  <h2 style="margin: 0; font-size: 20px;">New Adoption Application Submitted</h2>
+                </div>
+                <div style="padding: 20px 0;">
+                  <p style="font-size: 15px; color: #374151;">A new adoption application has been submitted and scored by the system.</p>
+                  
+                  <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+                    <tr>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Reference:</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee;">${reference}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Applicant:</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee;">${firstName} ${lastName}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Email:</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee;"><a href="mailto:${email}">${email}</a></td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Phone:</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee;">${phone}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Location:</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee;">${city}, ${country}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Puppy Preferred:</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee;">${puppyName || "Open to any puppy"}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Rubric Score:</td>
+                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #059669;">${score ?? "N/A"} / 100</td>
+                    </tr>
+                  </table>
 
-              <div style="margin-top: 24px; text-align: center;">
-                <a href="${siteUrl}/admin/applications" style="background-color: #991b1b; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Review Application in Admin Dashboard</a>
+                  <div style="margin-top: 24px; text-align: center;">
+                    <a href="${siteUrl}/admin/applications" style="background-color: #991b1b; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Review Application in Admin Dashboard</a>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        `,
-      });
+            `,
+            isClientFacing: false,
+          })
+        )
+      );
 
-      return res.status(200).json({ success: true, message: "Application notification email sent." });
+      return res.status(200).json({ success: true, message: "Application notification emails sent." });
     }
 
     if (type === "application_approved") {
@@ -229,6 +301,7 @@ export default async function handler(req: any, res: any) {
             </div>
           </div>
         `,
+        isClientFacing: true,
       });
 
       return res.status(200).json({ success: true, message: "Approval confirmation email sent to applicant." });
@@ -267,6 +340,7 @@ export default async function handler(req: any, res: any) {
             </p>
           </div>
         `,
+        isClientFacing: true,
       });
 
       return res.status(200).json({ success: true, message: "Email sent successfully to client." });

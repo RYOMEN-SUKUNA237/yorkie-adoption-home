@@ -11,6 +11,8 @@ import {
   X,
   LogOut,
   ExternalLink,
+  Mail,
+  Send,
 } from "lucide-react";
 import { useRouter } from "../../router";
 import { useAuth } from "../../../lib/auth";
@@ -32,6 +34,8 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/applications", label: "Applications", icon: FileText },
   { href: "/admin/messages", label: "Messages", icon: MessagesSquare },
+  { href: "/admin/emails", label: "Emails", icon: Mail },
+  { href: "/admin/whatsapp-logs", label: "WhatsApp Logs", icon: Send },
   { href: "/admin/puppies", label: "Puppies", icon: Dog },
   { href: "/admin/guides", label: "Guides", icon: BookOpen },
   { href: "/admin/waitlist", label: "Waitlist", icon: ListChecks },

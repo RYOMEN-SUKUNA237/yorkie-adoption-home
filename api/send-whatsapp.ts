@@ -1,3 +1,9 @@
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://ynvdvsnrnhvmauszfhtf.supabase.co";
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_-cJUoLQ3qg2Qpyt9aziSeg_AGgpF9Gn";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 export default async function handler(req: any, res: any) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -12,7 +18,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { recipientPhone, message, reference, certUrl } = req.body || {};
+    const { recipientPhone, recipientName, message, reference, certUrl } = req.body || {};
 
     if (!recipientPhone || !message) {
       return res.status(400).json({ error: "Missing required parameters (recipientPhone, message)" });
@@ -59,6 +65,19 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    // Save WhatsApp dispatch into whatsapp_logs table
+    try {
+      await supabase.from("whatsapp_logs").insert({
+        recipient_phone: cleanPhone,
+        recipient_name: recipientName || null,
+        reference: reference || null,
+        message,
+        status: apiSent ? "sent_api" : "generated",
+      });
+    } catch (logErr) {
+      console.warn("[api/send-whatsapp] Failed to log to whatsapp_logs:", logErr);
+    }
+
     const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 
     return res.status(200).json({
@@ -67,7 +86,7 @@ export default async function handler(req: any, res: any) {
       apiError,
       waLink,
       phone: cleanPhone,
-      message: "WhatsApp notification prepared successfully.",
+      message: "WhatsApp notification logged and prepared successfully.",
     });
   } catch (err: any) {
     console.error("[api/send-whatsapp error]:", err);

@@ -274,3 +274,27 @@ export interface DashboardStats {
   applications_by_day: Array<{ date: string; count: number }>;
   top_puppies: Array<{ name: string; count: number }>;
 }
+
+export interface EmailRow {
+  id: string;
+  direction: "incoming" | "outgoing";
+  from_email: string;
+  from_name: string | null;
+  to_email: string;
+  subject: string;
+  body_text: string | null;
+  body_html: string | null;
+  status: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface WhatsAppLogRow {
+  id: string;
+  recipient_phone: string;
+  recipient_name: string | null;
+  reference: string | null;
+  message: string;
+  status: string;
+  created_at: string;
+}

@@ -21,6 +21,8 @@ import PuppiesAdmin from "./pages/admin/PuppiesAdmin";
 import GuidesAdmin from "./pages/admin/GuidesAdmin";
 import Waitlist from "./pages/admin/Waitlist";
 import Settings from "./pages/admin/Settings";
+import EmailsAdmin from "./pages/admin/EmailsAdmin";
+import WhatsAppLogs from "./pages/admin/WhatsAppLogs";
 import AdoptionCertificate from "./pages/AdoptionCertificate";
 import { Menu, X } from "lucide-react";
 
@@ -243,6 +245,8 @@ function AdminRoutes({ path }: { path: string }) {
       {path === "/admin" && <Overview />}
       {path.startsWith("/admin/applications") && <Applications />}
       {path.startsWith("/admin/messages") && <Messages />}
+      {path.startsWith("/admin/emails") && <EmailsAdmin />}
+      {path.startsWith("/admin/whatsapp-logs") && <WhatsAppLogs />}
       {path.startsWith("/admin/puppies") && <PuppiesAdmin />}
       {path.startsWith("/admin/guides") && <GuidesAdmin />}
       {path.startsWith("/admin/waitlist") && <Waitlist />}
