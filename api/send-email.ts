@@ -252,7 +252,7 @@ export default async function handler(req: any, res: any) {
 
       const certUrl = `https://www.yorkieadoptionhome.com/certificate/${applicationId || reference}`;
       const chatUrl = `https://www.yorkieadoptionhome.com?chat=open&ref=${encodeURIComponent(reference)}`;
-      const waNumberClean = (sellerWhatsApp || "18587986768").replace(/\D/g, "");
+      const waNumberClean = (sellerWhatsApp || "12188332266").replace(/\D/g, "");
       const waDirectUrl = `https://wa.me/${waNumberClean}?text=${encodeURIComponent(
         `Hello! My adoption application (${reference}) for ${puppyName || "a Yorkshire puppy"} has been APPROVED. Here is my official proof certificate: ${certUrl}`
       )}`;

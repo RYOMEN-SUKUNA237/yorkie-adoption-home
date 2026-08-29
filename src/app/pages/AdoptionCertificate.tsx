@@ -24,7 +24,7 @@ export default function AdoptionCertificate({ certificateId }: { certificateId?:
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const sellerWhatsApp = settingString(settings, "whatsapp_number", "18587986768");
+  const sellerWhatsApp = settingString(settings, "whatsapp_number", "12188332266");
   const siteName = settingString(settings, "site_name", "Yorkshire Adoption Home");
 
   useEffect(() => {

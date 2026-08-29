@@ -1,9 +1,9 @@
--- Migration: 0010_fix_site_settings_defaults.sql
--- 1. Update contact_email and whatsapp_number in site_settings
+-- 1. Update contact_email, contact_phone and whatsapp_number in site_settings
 insert into public.site_settings (key, value, is_public)
 values
   ('contact_email', '"support@yorkieadoptionhome.com"'::jsonb, true),
-  ('whatsapp_number', '"18587986768"'::jsonb, true)
+  ('contact_phone', '"+1 (218) 833-2266"'::jsonb, true),
+  ('whatsapp_number', '"12188332266"'::jsonb, true)
 on conflict (key)
   do update set value = excluded.value, updated_at = now();
 

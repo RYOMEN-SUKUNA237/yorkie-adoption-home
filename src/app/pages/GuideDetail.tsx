@@ -10,7 +10,7 @@ export default function GuideDetailPage({ slug }: { slug: string }) {
   const { data: guide, loading } = useAsync(() => getGuideBySlug(slug), [slug]);
   const { settings } = useSettings();
   const contactEmail = settingString(settings, "contact_email", "support@yorkieadoptionhome.com");
-  const whatsappNumber = settingString(settings, "whatsapp_number", "18587986768");
+  const whatsappNumber = settingString(settings, "whatsapp_number", "12188332266");
   const whatsAppHref = `https://wa.me/${whatsappNumber.replace(/\D/g, "")}`;
 
   if (loading) {
