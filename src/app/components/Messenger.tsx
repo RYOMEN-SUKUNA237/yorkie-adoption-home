@@ -113,6 +113,35 @@ export default function Messenger({ settings }: MessengerProps) {
   }, [enabled, retry]);
 
   // -------------------------------------------------------------------
+  // External trigger: listen for 'open-chat' events or ?chat=open in URL
+  // -------------------------------------------------------------------
+  useEffect(() => {
+    const handleOpenChat = (e: Event) => {
+      setOpen(true);
+      const custom = e as CustomEvent<{ message?: string; name?: string; email?: string }>;
+      if (custom.detail?.message) setDraft(custom.detail.message);
+      if (custom.detail?.name) setName(custom.detail.name);
+      if (custom.detail?.email) setEmail(custom.detail.email);
+    };
+    window.addEventListener("open-chat", handleOpenChat);
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("chat") === "open" || params.get("chat") === "1") {
+        setOpen(true);
+        const refParam = params.get("ref");
+        if (refParam) {
+          setDraft(
+            `Hello! My adoption application (${refParam}) has been approved. I would like to verify and proceed with next steps.`
+          );
+        }
+      }
+    }
+
+    return () => window.removeEventListener("open-chat", handleOpenChat);
+  }, []);
+
+  // -------------------------------------------------------------------
   // Realtime: new messages arrive whether the panel is open or shut
   // -------------------------------------------------------------------
   useEffect(() => {

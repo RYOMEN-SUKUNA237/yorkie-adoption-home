@@ -266,7 +266,12 @@ function Routes() {
     path.match(/^\/certificate\/([^/]+)$/)?.[1] ||
     path.match(/^\/approval-proof\/([^/]+)$/)?.[1];
   if (certId) {
-    return <AdoptionCertificate certificateId={certId} />;
+    return (
+      <>
+        <AdoptionCertificate certificateId={certId} />
+        <PublicMessenger />
+      </>
+    );
   }
 
   const puppySlug = path.match(/^\/puppies\/([^/]+)$/)?.[1];

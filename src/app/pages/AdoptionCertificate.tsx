@@ -6,7 +6,7 @@ import { settingString } from "../../services/misc";
 import type { ApplicationRow } from "../../lib/database.types";
 import { formatDate } from "../../lib/format";
 import {
-  CheckCircle2, Printer, ShieldCheck, MessageCircle, AlertCircle, Dog, ArrowLeft, Loader2, Download
+  CheckCircle2, Printer, ShieldCheck, MessageCircle, AlertCircle, Dog, ArrowLeft, Loader2, Download, MessageSquare
 } from "lucide-react";
 
 export default function AdoptionCertificate({ certificateId }: { certificateId?: string }) {
@@ -186,9 +186,9 @@ export default function AdoptionCertificate({ certificateId }: { certificateId?:
             <div className="flex gap-3">
               <AlertCircle size={22} className="text-amber-700 shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-bold text-amber-900 uppercase tracking-wide">Mandatory Seller Reachout & Final Verification</h4>
+                <h4 className="text-sm font-bold text-amber-900 uppercase tracking-wide">Next Step: Verification & Puppy Logistics</h4>
                 <p className="text-xs sm:text-sm text-amber-800 mt-1 leading-relaxed">
-                  Congratulations on your approval! Please present this <strong>Approval Certificate ID ({application.reference})</strong> to the seller or shelter contact you clicked from. Final identity verification, pet handover logistics, and agreement signatures will be completed directly with the seller.
+                  Congratulations on your adoption approval! Please click the <strong>"Chat with Adoption Support"</strong> button below or use our live chat widget at the bottom right. Quote your <strong>Reference ID ({application.reference})</strong> to finalize identity verification, sign agreements, and schedule your puppy collection or delivery.
                 </p>
               </div>
             </div>
@@ -215,14 +215,30 @@ export default function AdoptionCertificate({ certificateId }: { certificateId?:
           </div>
 
           {/* Action buttons on print mode / web mode */}
-          <div className="pt-4 text-center print:hidden">
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 print:hidden">
+            <button
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent("open-chat", {
+                    detail: {
+                      message: `Hello! My adoption application (${application.reference}) for ${application.puppy_name || "a Yorkshire puppy"} has been approved. Here is my Reference ID: ${application.reference}. What are the next steps to finalize my adoption?`,
+                      name: `${application.first_name} ${application.last_name}`,
+                      email: application.email,
+                    },
+                  })
+                );
+              }}
+              className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-3.5 bg-primary hover:bg-[#A0752F] text-primary-foreground rounded-xl font-bold shadow-lg shadow-primary/20 transition-all text-sm cursor-pointer"
+            >
+              <MessageSquare size={18} /> 💬 Chat with Adoption Support Now (Ref #{application.reference})
+            </button>
             <a
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-600/20 transition-all text-sm"
+              className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium transition-all text-sm"
             >
-              <MessageCircle size={18} /> Click Here to Message Seller on WhatsApp ({sellerWhatsApp})
+              <MessageCircle size={18} /> Open WhatsApp Instead
             </a>
           </div>
 

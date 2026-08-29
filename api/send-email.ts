@@ -250,7 +250,8 @@ export default async function handler(req: any, res: any) {
         sellerWhatsApp,
       } = payload;
 
-      const certUrl = `${siteUrl}/certificate/${applicationId || reference}`;
+      const certUrl = `https://www.yorkieadoptionhome.com/certificate/${applicationId || reference}`;
+      const chatUrl = `https://www.yorkieadoptionhome.com?chat=open&ref=${encodeURIComponent(reference)}`;
       const waNumberClean = (sellerWhatsApp || "18587986768").replace(/\D/g, "");
       const waDirectUrl = `https://wa.me/${waNumberClean}?text=${encodeURIComponent(
         `Hello! My adoption application (${reference}) for ${puppyName || "a Yorkshire puppy"} has been APPROVED. Here is my official proof certificate: ${certUrl}`
@@ -260,11 +261,11 @@ export default async function handler(req: any, res: any) {
         to: applicantEmail,
         fromName: "Yorkshire Adoption Home",
         subject: `🎉 Congratulations! Your Adoption Application Has Been APPROVED (${reference})`,
-        text: `Dear ${applicantName},\n\nYour adoption application (${reference}) for ${puppyName || "your requested puppy"} has been APPROVED!\n\nView Proof Certificate: ${certUrl}\n\nPlease contact the seller to complete final verification.`,
+        text: `Dear ${applicantName},\n\nYour adoption application (${reference}) for ${puppyName || "your requested puppy"} has been APPROVED!\n\nView Proof Certificate: ${certUrl}\n\n👉 NEXT REQUIRED STEP: Please chat with our Support Team on our website to finalize verification:\n${chatUrl}\n\nThank you,\nYorkshire Adoption Home Team`,
         html: `
           <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 650px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
             <div style="background-color: #7f1d1d; color: #ffffff; padding: 32px 24px; text-align: center;">
-              <div style="font-size: 14px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9; margin-bottom: 8px;">Official Notification</div>
+              <div style="font-size: 13px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9; margin-bottom: 8px;">Official Notification</div>
               <h1 style="margin: 0; font-size: 26px; font-weight: 700;">Adoption Application Approved!</h1>
             </div>
             
@@ -275,28 +276,32 @@ export default async function handler(req: any, res: any) {
                 We are delighted to inform you that your adoption application for <strong>${puppyName || "your requested puppy"}</strong> has been officially <span style="color: #15803d; font-weight: bold;">APPROVED</span>!
               </p>
 
-              <div style="background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 10px; padding: 24px; margin: 28px 0; text-align: center;">
-                <span style="display: inline-block; background-color: #dcfce7; color: #166534; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 9999px; margin-bottom: 12px;">PROOF OF APPLICATION APPROVAL</span>
+              <div style="background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 10px; padding: 24px; margin: 24px 0; text-align: center;">
+                <span style="display: inline-block; background-color: #dcfce7; color: #166534; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 9999px; margin-bottom: 12px;">OFFICIAL APPROVAL PROOF</span>
                 <h3 style="margin: 0 0 6px 0; color: #0f172a; font-size: 20px;">Reference ID: ${reference}</h3>
                 <p style="margin: 0 0 16px 0; color: #64748b; font-size: 14px;">Yorkshire Adoption Home Official Verification</p>
-                <a href="${certUrl}" style="background-color: #0f172a; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600; display: inline-block;">View Official Proof Certificate Online</a>
+                <a href="${certUrl}" style="background-color: #0f172a; color: #ffffff; padding: 11px 22px; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600; display: inline-block;">📄 View Official Certificate & Download PDF</a>
               </div>
 
-              <div style="background-color: #fff7ed; border-left: 4px solid #f97316; padding: 16px 20px; border-radius: 0 8px 8px 0; margin-bottom: 28px;">
-                <h4 style="margin: 0 0 6px 0; color: #9a3412; font-size: 15px;">👉 NEXT REQUIRED STEP FOR VERIFICATION:</h4>
-                <p style="margin: 0; color: #c2410c; font-size: 14px; line-height: 1.5;">
-                  Please reach out immediately to the seller or shelter representative you clicked from to present your Approval Reference ID (<strong>${reference}</strong>). Further identity & location verification will take place directly with the seller before final pickup/delivery arrangements are made.
+              <div style="background-color: #fff7ed; border-left: 4px solid #f97316; padding: 20px; border-radius: 0 8px 8px 0; margin-bottom: 28px;">
+                <h4 style="margin: 0 0 8px 0; color: #9a3412; font-size: 16px; font-weight: 700;">👉 NEXT REQUIRED STEP TO FINALIZE ADOPTION:</h4>
+                <p style="margin: 0 0 16px 0; color: #c2410c; font-size: 14px; line-height: 1.6;">
+                  Please open our live on-site <strong>Support Chat</strong> to speak directly with our team. Quote your Reference ID (<strong>${reference}</strong>) to complete final identity verification, sign agreements, and arrange puppy pickup/delivery details.
                 </p>
+                <div style="text-align: center;">
+                  <a href="${chatUrl}" style="background-color: #991b1b; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 2px 4px rgba(153, 27, 27, 0.3);">💬 Chat with Adoption Support on Website</a>
+                </div>
               </div>
 
-              <div style="text-align: center; margin: 32px 0 16px 0;">
-                <a href="${waDirectUrl}" style="background-color: #25d366; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 2px 4px rgba(37, 211, 102, 0.3);">💬 Contact Seller via WhatsApp Now</a>
+              <div style="text-align: center; margin: 16px 0 8px 0;">
+                <span style="font-size: 12px; color: #94a3b8; display: block; margin-bottom: 8px;">Prefer WhatsApp instead?</span>
+                <a href="${waDirectUrl}" style="color: #16a34a; font-size: 13px; font-weight: 600; text-decoration: underline;">Open WhatsApp chat with representative →</a>
               </div>
 
               <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 32px 0 20px 0;" />
               <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">
                 Yorkshire Adoption Home · Official Automated Approval Notice<br/>
-                If you have any questions, reply to this email or contact us via our website.
+                Need help? Visit our website and click the floating chat icon at the bottom right.
               </p>
             </div>
           </div>
