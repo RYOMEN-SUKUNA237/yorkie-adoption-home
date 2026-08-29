@@ -461,7 +461,7 @@ on conflict (slug) do update set
 insert into public.site_settings (key, value, is_public) values
   ('site_name', '"Yorkshire Adoption Home"'::jsonb, true),
   ('tagline', '"A small, selective Yorkshire Terrier breeder. One or two litters a year, raised in our kitchen."'::jsonb, true),
-  ('contact_email', '"hello@yorkshire-adoption.example"'::jsonb, true),
+  ('contact_email', '"support@yorkieadoptionhome.com"'::jsonb, true),
   ('contact_phone', '"+1 (858) 798-6768"'::jsonb, true),
   ('whatsapp_number', '"18587986768"'::jsonb, true),
   ('address', '""'::jsonb, true),
@@ -472,7 +472,7 @@ insert into public.site_settings (key, value, is_public) values
   ('messenger_away_message', '"We are not at the desk right now. Leave a message and your email, and we will come back to you."'::jsonb, true),
   ('office_hours', '"Mon-Sat, 9am - 6pm (GMT+8)"'::jsonb, true),
   ('review_sla_days', '14'::jsonb, true),
-  ('notify_email', '"hello@yorkshire-adoption.example"'::jsonb, false)
+  ('notify_email', '"ntuhgireseelezanw@gmail.com"'::jsonb, false)
 on conflict (key) do nothing;
 
 commit;

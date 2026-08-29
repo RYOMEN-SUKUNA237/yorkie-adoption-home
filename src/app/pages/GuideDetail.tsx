@@ -2,10 +2,16 @@ import { getGuideBySlug } from "../../services/guides";
 import { useAsync } from "../../hooks/useAsync";
 import { useRouter } from "../router";
 import { ChevronLeft } from "lucide-react";
+import { useSettings } from "../../lib/settings";
+import { settingString } from "../../services/misc";
 
 export default function GuideDetailPage({ slug }: { slug: string }) {
   const { navigate } = useRouter();
   const { data: guide, loading } = useAsync(() => getGuideBySlug(slug), [slug]);
+  const { settings } = useSettings();
+  const contactEmail = settingString(settings, "contact_email", "support@yorkieadoptionhome.com");
+  const whatsappNumber = settingString(settings, "whatsapp_number", "18587986768");
+  const whatsAppHref = `https://wa.me/${whatsappNumber.replace(/\D/g, "")}`;
 
   if (loading) {
     return (
@@ -88,7 +94,7 @@ export default function GuideDetailPage({ slug }: { slug: string }) {
           </p>
           <div className="flex flex-wrap gap-4">
             <a
-              href="https://wa.me/60123456789"
+              href={whatsAppHref}
               className="text-sm font-medium text-accent hover:text-foreground transition-colors underline underline-offset-2"
               target="_blank"
               rel="noopener noreferrer"
@@ -96,10 +102,10 @@ export default function GuideDetailPage({ slug }: { slug: string }) {
               WhatsApp
             </a>
             <a
-              href="mailto:hello@yorkshire-adoption.example"
+              href={`mailto:${contactEmail}`}
               className="text-sm font-medium text-accent hover:text-foreground transition-colors underline underline-offset-2"
             >
-              Email
+              {contactEmail}
             </a>
           </div>
         </div>

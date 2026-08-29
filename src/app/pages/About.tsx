@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "../router";
+import { useSettings } from "../../lib/settings";
+import { settingString } from "../../services/misc";
 
 const FAQ = [
   {
@@ -67,6 +69,10 @@ function AccordionItem({ q, a }: { q: string; a: string }) {
 
 export default function AboutPage() {
   const { navigate } = useRouter();
+  const { settings } = useSettings();
+  const contactEmail = settingString(settings, "contact_email", "support@yorkieadoptionhome.com");
+  const whatsappNumber = settingString(settings, "whatsapp_number", "18587986768");
+  const whatsAppHref = `https://wa.me/${whatsappNumber.replace(/\D/g, "")}`;
 
   return (
     <main className="min-h-screen bg-background pb-24">
@@ -187,7 +193,7 @@ export default function AboutPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <a
-              href="https://wa.me/60123456789"
+              href={whatsAppHref}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 border border-border rounded-sm px-5 py-4 hover:border-foreground/40 transition-colors group"
@@ -200,14 +206,14 @@ export default function AboutPage() {
               </span>
             </a>
             <a
-              href="mailto:hello@yorkshire-adoption.example"
+              href={`mailto:${contactEmail}`}
               className="flex items-center gap-3 border border-border rounded-sm px-5 py-4 hover:border-foreground/40 transition-colors group"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
                 <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">
-                hello@yorkshire-adoption.example
+                {contactEmail}
               </span>
             </a>
           </div>
