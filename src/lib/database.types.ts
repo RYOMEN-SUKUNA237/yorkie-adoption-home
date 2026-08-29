@@ -172,6 +172,9 @@ export interface ApplicationRow {
   reviewed_by: string | null;
   decision_note: string | null;
 
+  notification_preference?: "email" | "whatsapp" | "both";
+  applicant_whatsapp?: string | null;
+
   submitted_at: string;
   updated_at: string;
 }

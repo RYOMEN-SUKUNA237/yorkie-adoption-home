@@ -21,6 +21,7 @@ import PuppiesAdmin from "./pages/admin/PuppiesAdmin";
 import GuidesAdmin from "./pages/admin/GuidesAdmin";
 import Waitlist from "./pages/admin/Waitlist";
 import Settings from "./pages/admin/Settings";
+import AdoptionCertificate from "./pages/AdoptionCertificate";
 import { Menu, X } from "lucide-react";
 
 const NAV_LINKS = [
@@ -257,6 +258,13 @@ function Routes() {
     return <AdminRoutes path={path} />;
   }
 
+  const certId =
+    path.match(/^\/certificate\/([^/]+)$/)?.[1] ||
+    path.match(/^\/approval-proof\/([^/]+)$/)?.[1];
+  if (certId) {
+    return <AdoptionCertificate />;
+  }
+
   const puppySlug = path.match(/^\/puppies\/([^/]+)$/)?.[1];
   const guideSlug = path.match(/^\/guides\/([^/]+)$/)?.[1];
 
@@ -298,7 +306,6 @@ function PublicMessenger() {
   const { path } = useRouter();
   const { settings } = useSettings();
 
-  // The application form is a focused task; a floating panel over it is noise.
   if (path === "/apply") return null;
 
   return <Messenger settings={settings} />;

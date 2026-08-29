@@ -129,7 +129,65 @@ export async function sendMessage(params: {
     .single();
 
   if (error) throw error;
-  return data as MessageRow;
+  const msg = data as MessageRow;
+
+  // Trigger admin email alert on visitor messages
+  if (params.as === "visitor") {
+    try {
+      db.from("conversations")
+        .select("visitor_name, visitor_email, subject")
+        .eq("id", params.conversationId)
+        .single()
+        .then(({ data: conv }) => {
+          void fetch("/api/send-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "new_message",
+              payload: {
+                visitorName: conv?.visitor_name || params.senderName || "Visitor",
+                visitorEmail: conv?.visitor_email || "Not specified",
+                subject: conv?.subject || "Support Inquiry",
+                body: params.body,
+              },
+            }),
+          });
+        });
+    } catch (notifyErr) {
+      console.warn("[messages] Visitor message email trigger failed:", notifyErr);
+    }
+  }
+
+  // Trigger client email notification when admin replies
+  if (params.as === "admin") {
+    try {
+      db.from("conversations")
+        .select("visitor_name, visitor_email, subject")
+        .eq("id", params.conversationId)
+        .single()
+        .then(({ data: conv }) => {
+          if (conv?.visitor_email) {
+            void fetch("/api/send-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                type: "admin_reply",
+                payload: {
+                  visitorEmail: conv.visitor_email,
+                  visitorName: conv.visitor_name || "Client",
+                  subject: conv.subject || "Support Inquiry",
+                  replyBody: params.body,
+                },
+              }),
+            });
+          }
+        });
+    } catch (replyErr) {
+      console.warn("[messages] Admin reply email trigger failed:", replyErr);
+    }
+  }
+
+  return msg;
 }
 
 export async function markRead(conversationId: string, as: "visitor" | "admin"): Promise<void> {

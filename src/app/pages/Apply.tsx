@@ -42,6 +42,8 @@ interface FormData {
   phone: string;
   city: string;
   country: string;
+  notificationPreference: "email" | "whatsapp" | "both";
+  applicantWhatsapp: string;
   ownership: "own" | "rent" | "";
   landlordAllows: "yes" | "no" | "unsure" | "";
   homeType: "house" | "apartment" | "compound" | "";
@@ -67,6 +69,7 @@ const EMPTY_PET: Pet = { species: "", age: "", sex: "", vaccinated: false, neute
 
 const INITIAL: FormData = {
   firstName: "", lastName: "", email: "", phone: "", city: "", country: "",
+  notificationPreference: "email", applicantWhatsapp: "",
   ownership: "", landlordAllows: "", homeType: "", fencedSpace: "",
   adultCount: "", childrenAges: "", allergies: "", primaryCarer: "",
   hasPets: null, pets: [],
@@ -200,6 +203,8 @@ export default function ApplyPage() {
         phone: data.phone,
         city: data.city,
         country: data.country,
+        notificationPreference: data.notificationPreference,
+        applicantWhatsapp: data.applicantWhatsapp || data.phone,
         ownership: data.ownership,
         landlordAllows: data.landlordAllows,
         homeType: data.homeType,
@@ -307,6 +312,23 @@ export default function ApplyPage() {
                 <Input value={data.country} onChange={(v) => set("country", v)} placeholder="Singapore" />
                 {errors.country && <ErrorMsg msg={errors.country} />}
               </div>
+            </div>
+
+            <div className="pt-2 border-t border-border">
+              <FieldLabel required>Approval Notification Channel</FieldLabel>
+              <p className="text-xs text-muted-foreground mb-3">
+                Choose how you would like to be notified and receive your official Proof Certificate when your application is approved.
+              </p>
+              <RadioGroup
+                name="notificationPreference"
+                value={data.notificationPreference}
+                onChange={(v) => set("notificationPreference", v as "email" | "whatsapp" | "both")}
+                options={[
+                  { value: "email", label: "Email (Default)", hint: "Automated confirmation sent to your email address." },
+                  { value: "whatsapp", label: "WhatsApp", hint: "Automated confirmation sent to your WhatsApp number." },
+                  { value: "both", label: "Both Email & WhatsApp", hint: "Receive instant notifications on both channels." },
+                ]}
+              />
             </div>
           </div>
         );

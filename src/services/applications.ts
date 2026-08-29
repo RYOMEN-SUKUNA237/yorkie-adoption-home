@@ -15,6 +15,9 @@ export interface ApplicationSubmission {
   city: string;
   country: string;
 
+  notificationPreference?: "email" | "whatsapp" | "both";
+  applicantWhatsapp?: string;
+
   ownership: string;
   landlordAllows: string;
   homeType: string;
@@ -84,6 +87,9 @@ export async function submitApplication(
     city: input.city.trim(),
     country: input.country.trim(),
 
+    notification_preference: input.notificationPreference || "email",
+    applicant_whatsapp: input.applicantWhatsapp?.trim() || input.phone.trim(),
+
     ownership: input.ownership || null,
     landlord_allows: input.landlordAllows || null,
     home_type: input.homeType || null,
@@ -117,6 +123,31 @@ export async function submitApplication(
   if (error) throw error;
 
   const result = data as { id: string; reference: string; score: number };
+
+  // Trigger admin email alert in background
+  try {
+    void fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "new_application",
+        payload: {
+          reference: result.reference,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          email: input.email,
+          phone: input.phone,
+          puppyName: input.puppyName || "Any Puppy",
+          score: result.score,
+          city: input.city,
+          country: input.country,
+        },
+      }),
+    });
+  } catch (err) {
+    console.warn("[applications] Failed to trigger email notification endpoint:", err);
+  }
+
   return { reference: result.reference, id: result.id, persisted: true };
 }
 
@@ -209,6 +240,55 @@ export async function updateApplicationStatus(
     .eq("id", id);
 
   if (error) throw error;
+
+  // Automated notification dispatch on approval without human intervention
+  if (status === "approved") {
+    try {
+      const app = await getApplication(id);
+      if (app) {
+        const pref = app.notification_preference || "email";
+        const certUrl = `${typeof window !== "undefined" ? window.location.origin : "https://yorkshire-adoption-home.vercel.app"}/certificate/${app.id}`;
+        const applicantName = `${app.first_name} ${app.last_name}`;
+
+        // 1. Send Email if preference is 'email' or 'both'
+        if (pref === "email" || pref === "both") {
+          void fetch("/api/send-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "application_approved",
+              payload: {
+                applicantEmail: app.email,
+                applicantName,
+                reference: app.reference,
+                puppyName: app.puppy_name || "Yorkshire Puppy",
+                applicationId: app.id,
+              },
+            }),
+          });
+        }
+
+        // 2. Send WhatsApp if preference is 'whatsapp' or 'both'
+        if (pref === "whatsapp" || pref === "both") {
+          const recipientPhone = app.applicant_whatsapp || app.phone;
+          const waMessage = `🎉 Hello ${applicantName}! Your adoption application (${app.reference}) for ${app.puppy_name || "a Yorkshire puppy"} has been APPROVED!\n\nPlease view your official Proof Certificate here:\n${certUrl}\n\n👉 REQUIRED STEP: Please reach out to the seller to complete final verification.`;
+
+          void fetch("/api/send-whatsapp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              recipientPhone,
+              message: waMessage,
+              reference: app.reference,
+              certUrl,
+            }),
+          });
+        }
+      }
+    } catch (notifyErr) {
+      console.warn("[applications] Approval notification error:", notifyErr);
+    }
+  }
 }
 
 export async function deleteApplication(id: string): Promise<void> {

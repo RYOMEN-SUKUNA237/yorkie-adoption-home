@@ -11,7 +11,7 @@ import type { ConversationRow, MessageRow } from "../../../lib/database.types";
 import { dayLabel, formatTime, initials, timeAgo, truncate } from "../../../lib/format";
 import { useAuth } from "../../../lib/auth";
 import {
-  Button, EmptyState, ErrorState, FilterChips, LoadingState, PageHeader, TextInput,
+  Button, EmptyState, ErrorState, Field, FilterChips, LoadingState, PageHeader, TextArea, TextInput,
 } from "../../components/admin/ui";
 
 type StatusFilter = "open" | "closed" | "all";
@@ -29,6 +29,7 @@ export default function Messages() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [composeOpen, setComposeOpen] = useState(false);
 
   const debouncedSearch = useDebounced(search, 300);
 
@@ -57,7 +58,14 @@ export default function Messages() {
             ? `${conversations.data.filter((c) => c.unread_for_admin > 0).length} awaiting a reply`
             : undefined
         }
+        actions={
+          <Button size="sm" variant="primary" onClick={() => setComposeOpen(true)}>
+            <Mail size={13} /> Compose Email to Client
+          </Button>
+        }
       />
+
+      {composeOpen && <ComposeEmailModal onClose={() => setComposeOpen(false)} />}
 
       <div className="flex-1 flex min-h-0 bg-background">
         {/* Conversation list */}
@@ -492,4 +500,128 @@ function shortPath(url: string): string {
   } catch {
     return url;
   }
+}
+
+function ComposeEmailModal({ onClose }: { onClose: () => void }) {
+  const [toEmail, setToEmail] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [subject, setSubject] = useState("");
+  const [messageBody, setMessageBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSend = async () => {
+    if (!toEmail.trim() || !messageBody.trim()) {
+      setError("Recipient email and message body are required.");
+      return;
+    }
+
+    setSending(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "direct_email",
+          payload: {
+            toEmail: toEmail.trim(),
+            clientName: clientName.trim(),
+            subject: subject.trim() || "Update from Yorkshire Adoption Home",
+            messageBody: messageBody.trim(),
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send email.");
+
+      setSuccess(true);
+      setTimeout(() => {
+        onClose();
+      }, 1800);
+    } catch (err: any) {
+      setError(err.message || "Failed to send email.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-background border border-border rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">Compose Email to Client</h3>
+            <p className="text-xs text-muted-foreground">
+              Sends directly from <strong className="text-foreground font-mono">support@yorkieadoptionhome.com</strong>
+            </p>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            ✕
+          </button>
+        </div>
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 text-red-600 text-xs p-3 rounded-md">
+            {error}
+          </div>
+        )}
+
+        {success ? (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-sm p-4 rounded-md text-center font-medium">
+            ✓ Email successfully sent to {toEmail}!
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <Field label="Recipient Email" required hint="Client's email address">
+              <TextInput
+                type="email"
+                placeholder="client@example.com"
+                value={toEmail}
+                onChange={(e) => setToEmail(e.target.value)}
+              />
+            </Field>
+
+            <Field label="Client Name" hint="Optional">
+              <TextInput
+                placeholder="Jane Doe"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+              />
+            </Field>
+
+            <Field label="Subject" hint="Defaults to 'Update from Yorkshire Adoption Home'">
+              <TextInput
+                placeholder="e.g. Regarding your adoption inquiry"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+              />
+            </Field>
+
+            <Field label="Message Body" required>
+              <TextArea
+                rows={5}
+                placeholder="Write your email text here…"
+                value={messageBody}
+                onChange={(e) => setMessageBody(e.target.value)}
+              />
+            </Field>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <Button variant="ghost" onClick={onClose} disabled={sending}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleSend} disabled={sending}>
+                {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                Send Email
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

@@ -82,12 +82,12 @@ export type SettingsMap = Record<string, unknown>;
 const DEFAULT_SETTINGS: SettingsMap = {
   site_name: "Yorkshire Adoption Home",
   tagline: "A small, selective Yorkshire Terrier breeder. One or two litters a year, raised in our kitchen.",
-  contact_email: "hello@yorkshire-adoption.example",
+  contact_email: "ntuhgireseelezanw@gmail.com",
   contact_phone: "+1 (858) 798-6768",
   whatsapp_number: "18587986768",
   address: "",
   instagram_url: "",
-  notify_email: "",
+  notify_email: "ntuhgireseelezanw@gmail.com",
   applications_open: true,
   messenger_enabled: true,
   messenger_greeting:
