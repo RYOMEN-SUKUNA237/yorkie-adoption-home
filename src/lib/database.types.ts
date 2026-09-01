@@ -275,6 +275,17 @@ export interface DashboardStats {
   top_puppies: Array<{ name: string; count: number }>;
 }
 
+/** Delivery states Resend reports back through the inbound webhook. */
+export type EmailStatus =
+  | "sent"
+  | "delivered"
+  | "opened"
+  | "bounced"
+  | "complained"
+  | "delayed"
+  | "failed"
+  | "received";
+
 export interface EmailRow {
   id: string;
   direction: "incoming" | "outgoing";
@@ -284,10 +295,14 @@ export interface EmailRow {
   subject: string;
   body_text: string | null;
   body_html: string | null;
-  status: string;
+  status: EmailStatus | string;
   read_at: string | null;
   created_at: string;
+  /** Resend message id. Deduplicates webhook retries and anchors delivery events. */
+  provider_id: string | null;
 }
+
+export type WhatsAppStatus = "sent" | "delivered" | "read" | "failed";
 
 export interface WhatsAppLogRow {
   id: string;
@@ -295,6 +310,11 @@ export interface WhatsAppLogRow {
   recipient_name: string | null;
   reference: string | null;
   message: string;
-  status: string;
+  status: WhatsAppStatus | string;
   created_at: string;
+  /** Which gateway carried it: `meta`, `twilio`, or `none` when unconfigured. */
+  provider: string | null;
+  provider_message_id: string | null;
+  /** Verbatim provider error. Meta 131047 means an approved template is required. */
+  error: string | null;
 }

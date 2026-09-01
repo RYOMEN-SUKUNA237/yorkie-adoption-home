@@ -12,3 +12,5 @@ supabase/.branches
 
 .vercel
 .env*
+# The template documents required configuration and holds no secrets.
+!.env.example

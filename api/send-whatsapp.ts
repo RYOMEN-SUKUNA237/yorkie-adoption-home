@@ -1,16 +1,40 @@
-import { createClient } from "@supabase/supabase-js";
+/**
+ * POST /api/send-whatsapp
+ *
+ * Sends the message and reports what actually happened. The previous version
+ * returned `success: true` whether or not anything was delivered — the only
+ * hint was an `apiSent` flag nobody read — and logged every attempt with
+ * status `generated`, meaning "a link exists, go press send yourself".
+ *
+ * Delivery now goes through `_lib/whatsapp`, which drives the Meta Cloud API
+ * or Twilio, and the log row records the provider, its message id and its
+ * error verbatim.
+ */
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://ynvdvsnrnhvmauszfhtf.supabase.co";
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_-cJUoLQ3qg2Qpyt9aziSeg_AGgpF9Gn";
-const supabase = createClient(supabaseUrl, supabaseKey);
+import {
+  applyCors,
+  db,
+  fail,
+  type ApiRequest,
+  type ApiResponse,
+} from "./_lib/server";
+import { configuredProvider, sendWhatsApp } from "./_lib/whatsapp";
 
-export default async function handler(req: any, res: any) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+export default async function handler(req: ApiRequest, res: ApiResponse) {
+  if (applyCors(req, res, "POST, GET, OPTIONS")) return;
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
+  // A quick way to check from a browser whether credentials reached Vercel.
+  if (req.method === "GET") {
+    const provider = configuredProvider();
+    return res.status(200).json({
+      status: "ok",
+      provider,
+      automatic: provider !== "none",
+      hint:
+        provider === "none"
+          ? "Set WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN (Meta), or TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_NUMBER."
+          : undefined,
+    });
   }
 
   if (req.method !== "POST") {
@@ -18,78 +42,66 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { recipientPhone, recipientName, message, reference, certUrl } = req.body || {};
+    const { recipientPhone, recipientName, message, reference, templateParams } = (req.body ??
+      {}) as {
+      recipientPhone?: string;
+      recipientName?: string;
+      message?: string;
+      reference?: string;
+      templateParams?: string[];
+    };
 
     if (!recipientPhone || !message) {
-      return res.status(400).json({ error: "Missing required parameters (recipientPhone, message)" });
+      return res.status(400).json({ error: "recipientPhone and message are both required" });
     }
 
-    const cleanPhone = String(recipientPhone).replace(/\D/g, "");
-
-    // Check if Twilio environment variables exist for automated API dispatch
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const fromWhatsApp = process.env.TWILIO_WHATSAPP_NUMBER || "whatsapp:+14155238886";
-
-    let apiSent = false;
-    let apiError: string | null = null;
-
-    if (accountSid && authToken) {
-      try {
-        const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-        const params = new URLSearchParams();
-        params.append("From", fromWhatsApp.startsWith("whatsapp:") ? fromWhatsApp : `whatsapp:${fromWhatsApp}`);
-        params.append("To", `whatsapp:+${cleanPhone}`);
-        params.append("Body", message);
-
-        const twilioRes = await fetch(
-          `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Basic ${auth}`,
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: params.toString(),
-          }
-        );
-
-        if (twilioRes.ok) {
-          apiSent = true;
-        } else {
-          const errData = await twilioRes.json();
-          apiError = errData.message || "Twilio error";
-        }
-      } catch (err: any) {
-        apiError = err.message;
-      }
-    }
-
-    // Save WhatsApp dispatch into whatsapp_logs table
-    try {
-      await supabase.from("whatsapp_logs").insert({
-        recipient_phone: cleanPhone,
-        recipient_name: recipientName || null,
-        reference: reference || null,
-        message,
-        status: apiSent ? "sent_api" : "generated",
-      });
-    } catch (logErr) {
-      console.warn("[api/send-whatsapp] Failed to log to whatsapp_logs:", logErr);
-    }
-
-    const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-
-    return res.status(200).json({
-      success: true,
-      apiSent,
-      apiError,
-      waLink,
-      phone: cleanPhone,
-      message: "WhatsApp notification logged and prepared successfully.",
+    const dispatch = await sendWhatsApp({
+      phone: recipientPhone,
+      message,
+      templateParams: Array.isArray(templateParams) ? templateParams : undefined,
     });
-  } catch (err: any) {
-    console.error("[api/send-whatsapp error]:", err);
-    return res.status(500).json({ error: err.message || "WhatsApp dispatch error" });
+
+    // Log the truth, whichever way it went.
+    try {
+      const { error } = await db()
+        .from("whatsapp_logs")
+        .insert({
+          recipient_phone: dispatch.phone,
+          recipient_name: recipientName ?? null,
+          reference: reference ?? null,
+          message,
+          status: dispatch.delivered ? "sent" : "failed",
+          provider: dispatch.provider,
+          provider_message_id: dispatch.messageId,
+          error: dispatch.error,
+        });
+      if (error) throw error;
+    } catch (logErr) {
+      console.warn("[api/send-whatsapp] could not write whatsapp_logs:", logErr);
+    }
+
+    if (!dispatch.delivered) {
+      console.error(
+        `[api/send-whatsapp] ${dispatch.provider} refused ${dispatch.phone}: ` +
+          `${dispatch.errorCode ?? "?"} ${dispatch.error ?? ""}`
+      );
+    }
+
+    // 502 when a configured provider rejected the send: the caller asked for
+    // a message to go out and it did not. 503 when nothing is configured.
+    const status = dispatch.delivered ? 200 : dispatch.errorCode === "not_configured" ? 503 : 502;
+
+    return res.status(status).json({
+      success: dispatch.delivered,
+      provider: dispatch.provider,
+      messageId: dispatch.messageId,
+      error: dispatch.error,
+      errorCode: dispatch.errorCode,
+      phone: dispatch.phone,
+      // A manual fallback for the dashboard only — never the delivery path.
+      waLink: dispatch.link,
+    });
+  } catch (err) {
+    return fail(res, err, "api/send-whatsapp");
   }
 }

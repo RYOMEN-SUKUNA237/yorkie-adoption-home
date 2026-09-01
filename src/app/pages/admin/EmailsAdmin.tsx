@@ -59,8 +59,8 @@ export default function EmailsAdmin() {
         subtitle="Manage incoming replies and outgoing emails sent from support@yorkieadoptionhome.com"
         actions={
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setWebhookHelpOpen(true)} title="Inbound Setup Guide">
-              <HelpCircle size={13} /> Receiving Guide
+            <Button size="sm" variant="ghost" onClick={() => setWebhookHelpOpen(true)} title="How receiving is wired up">
+              <HelpCircle size={13} /> Receiving
             </Button>
             <Button size="sm" variant="ghost" onClick={() => emails.reload()} title="Refresh mailbox">
               <RefreshCw size={13} className={emails.loading ? "animate-spin" : ""} /> Refresh
@@ -136,10 +136,10 @@ export default function EmailsAdmin() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span
-                          className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                          className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${
                             isIncoming
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-blue-100 text-blue-800"
+                              ? "border-accent/40 bg-accent/10 text-accent"
+                              : "border-border bg-sidebar-accent text-muted-foreground"
                           }`}
                         >
                           {isIncoming ? <ArrowDownLeft size={11} /> : <ArrowUpRight size={11} />}
@@ -188,19 +188,20 @@ export default function EmailsAdmin() {
                     <div>
                       <div className="flex items-center gap-2 mb-1.5">
                         <span
-                          className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                          className={`text-[10px] tracking-[0.14em] uppercase px-2.5 py-0.5 rounded-full border ${
                             selected.direction === "incoming"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-blue-100 text-blue-800"
+                              ? "border-accent/40 bg-accent/10 text-accent"
+                              : "border-border bg-sidebar-accent text-muted-foreground"
                           }`}
                         >
-                          {selected.direction === "incoming" ? "INCOMING MESSAGE" : "SENT FROM SITE"}
+                          {selected.direction === "incoming" ? "Received" : "Sent"}
                         </span>
+                        <DeliveryState email={selected} />
                         <span className="text-xs text-muted-foreground">
                           {formatDateTime(selected.created_at)}
                         </span>
                       </div>
-                      <h2 className="text-xl font-bold text-foreground">{selected.subject}</h2>
+                      <h2 className="text-xl text-foreground" style={{ fontFamily: "'Newsreader', Georgia, serif" }}>{selected.subject}</h2>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -235,16 +236,7 @@ export default function EmailsAdmin() {
 
                 {/* Email Body Content */}
                 <div className="p-6 sm:p-8 flex-1">
-                  {selected.body_html ? (
-                    <div
-                      className="prose prose-sm max-w-none text-foreground border border-border rounded-lg p-6 bg-white"
-                      dangerouslySetInnerHTML={{ __html: selected.body_html }}
-                    />
-                  ) : (
-                    <div className="bg-sidebar/30 border border-border rounded-lg p-6 text-sm text-foreground whitespace-pre-wrap leading-relaxed font-sans">
-                      {selected.body_text || "(No message body content)"}
-                    </div>
-                  )}
+                  <EmailBody email={selected} />
                 </div>
               </div>
             ) : (
@@ -272,130 +264,257 @@ export default function EmailsAdmin() {
       )}
 
       {/* Inbound Webhook Help Guide Modal */}
-      {webhookHelpOpen && <WebhookHelpModal onClose={() => setWebhookHelpOpen(false)} onRefresh={() => emails.reload()} />}
+      {webhookHelpOpen && <ReceivingStatusModal onClose={() => setWebhookHelpOpen(false)} />}
     </>
   );
 }
 
-function WebhookHelpModal({ onClose, onRefresh }: { onClose: () => void; onRefresh: () => void }) {
-  const [copied, setCopied] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
+/**
+ * The message body.
+ *
+ * Inbound HTML arrives from whoever emailed us, and it used to be handed to
+ * `dangerouslySetInnerHTML` — which runs it inside the authenticated admin
+ * session, next to the Supabase token. A crafted `<img onerror>` in a client
+ * reply was enough to take the dashboard over.
+ *
+ * A `sandbox` iframe with no tokens gets no scripts, no same-origin access,
+ * no forms and no top-level navigation, so the markup can only draw itself.
+ * `srcDoc` keeps it in the document with no network fetch.
+ */
+function EmailBody({ email }: { email: EmailRow }) {
+  if (!email.body_html) {
+    return (
+      <div className="bg-sidebar/30 border border-border rounded-lg p-6 text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+        {email.body_text || "(no message body)"}
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-border rounded-lg overflow-hidden bg-white">
+      <iframe
+        title={`Message: ${email.subject}`}
+        sandbox=""
+        referrerPolicy="no-referrer"
+        srcDoc={email.body_html}
+        className="w-full h-[560px] block border-0"
+      />
+    </div>
+  );
+}
+
+const DELIVERY_LABEL: Record<string, string> = {
+  sent: "Sent",
+  delivered: "Delivered",
+  opened: "Opened",
+  delayed: "Delayed",
+  bounced: "Bounced",
+  complained: "Marked as spam",
+  failed: "Failed",
+};
+
+/**
+ * Resend reports what became of each outgoing message through the same
+ * webhook that carries inbound mail. Bounces are the ones worth noticing.
+ */
+function DeliveryState({ email }: { email: EmailRow }) {
+  if (email.direction !== "outgoing") return null;
+
+  const label = DELIVERY_LABEL[email.status];
+  if (!label) return null;
+
+  const bad = email.status === "bounced" || email.status === "failed" || email.status === "complained";
+
+  return (
+    <span
+      className={`text-[10px] tracking-[0.14em] uppercase px-2.5 py-0.5 rounded-full border ${
+        bad ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border text-muted-foreground"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Receiving status.
+ *
+ * This panel replaced a walkthrough that told you to point an MX record at
+ * `inbound.resend.com`. No such host exists — Resend issues a regional
+ * inbound address, and the one this domain was given is below. The panel also
+ * used to offer a button that injected a fake email straight into the client
+ * archive; it now reports what the endpoint says about itself, which is the
+ * thing actually worth knowing.
+ */
+function ReceivingStatusModal({ onClose }: { onClose: () => void }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const [probe, setProbe] = useState<{ ok: boolean; verified: boolean; detail?: string } | null>(null);
+  const [probing, setProbing] = useState(false);
+
   const webhookUrl = "https://www.yorkieadoptionhome.com/api/inbound-email";
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(webhookUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copy = (value: string, key: string) => {
+    navigator.clipboard.writeText(value);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
   };
 
-  const handleTestWebhook = async () => {
-    setTesting(true);
-    setTestResult(null);
+  const runProbe = async () => {
+    setProbing(true);
+    setProbe(null);
     try {
-      const res = await fetch("/api/inbound-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: "test-client@example.com",
-          to: "support@yorkieadoptionhome.com",
-          subject: "Test Inbound Email — " + new Date().toLocaleTimeString(),
-          text: "This is a test email to verify the inbound email pipeline is working correctly.",
-          html: "<p>This is a <strong>test email</strong> to verify the inbound email pipeline is working correctly.</p>",
-        }),
-      });
+      const res = await fetch("/api/inbound-email", { method: "GET" });
       const data = await res.json();
-      if (res.ok) {
-        setTestResult("✓ Test email successfully saved! Click Refresh to see it in your Inbox.");
-        onRefresh();
-      } else {
-        setTestResult("✗ Test failed: " + (data.error || "Unknown error"));
-      }
-    } catch (err: any) {
-      setTestResult("✗ Error: " + err.message);
+      setProbe({
+        ok: res.ok,
+        verified: data.signatureVerification === "enabled",
+        detail: res.ok ? undefined : data.error || `Endpoint returned ${res.status}`,
+      });
+    } catch (err) {
+      setProbe({
+        ok: false,
+        verified: false,
+        detail: err instanceof Error ? err.message : "Could not reach the endpoint.",
+      });
     } finally {
-      setTesting(false);
+      setProbing(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-background border border-border rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4 my-auto">
-        <div className="flex items-center justify-between border-b border-border pb-3">
-          <h3 className="text-base font-semibold text-foreground">How to Receive Inbound Emails</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
-        </div>
-
-        <div className="space-y-4 text-sm text-foreground leading-relaxed">
-
-          {/* Test section */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
-            <p className="text-xs font-semibold text-blue-800">🧪 Test Your Inbox Right Now</p>
-            <p className="text-xs text-blue-700">
-              Click below to simulate an inbound email — this will instantly add a test email to your Inbox so you can verify the inbox tab is working:
-            </p>
-            <Button size="sm" variant="primary" onClick={handleTestWebhook} disabled={testing}>
-              {testing ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
-              Send Test Email to Inbox
-            </Button>
-            {testResult && (
-              <p className={`text-xs font-medium mt-1 ${testResult.startsWith("✓") ? "text-emerald-700" : "text-red-600"}`}>
-                {testResult}
-              </p>
-            )}
-          </div>
-
-          {/* DNS Setup */}
+    <div className="fixed inset-0 z-50 bg-foreground/40 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-background border border-border rounded-xl shadow-2xl max-w-xl w-full my-auto">
+        <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-border">
           <div>
-            <p className="font-semibold text-foreground mb-2">For Real Inbound Emails from Clients:</p>
-            <p className="text-xs text-muted-foreground mb-3">
-              To receive emails sent to <strong className="text-primary font-mono">support@yorkieadoptionhome.com</strong> in this inbox, you need to complete two steps:
+            <h3 className="text-base text-foreground">Receiving mail</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              What has to be true for client replies to reach this inbox
             </p>
-
-            <div className="space-y-3">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="text-xs font-bold text-amber-800 mb-1">Step 1 — Add MX Record in Cloudflare/DNS</p>
-                <p className="text-xs text-amber-700 mb-2">Log into your domain registrar (where you manage DNS for yorkieadoptionhome.com) and add this MX record:</p>
-                <div className="font-mono text-xs bg-white border border-amber-200 rounded p-2 space-y-1">
-                  <div><span className="text-muted-foreground">Type:</span> <strong>MX</strong></div>
-                  <div><span className="text-muted-foreground">Name:</span> <strong>support</strong> (or <strong>@</strong> for all)</div>
-                  <div><span className="text-muted-foreground">Value:</span> <strong>inbound.resend.com</strong></div>
-                  <div><span className="text-muted-foreground">Priority:</span> <strong>10</strong></div>
-                </div>
-              </div>
-
-              <div className="bg-sidebar p-3 rounded-lg border border-border space-y-2">
-                <p className="text-xs font-bold text-foreground">Step 2 — Add Webhook in Resend Dashboard</p>
-                <p className="text-xs text-muted-foreground">Your live webhook URL:</p>
-                <div className="flex items-center gap-2">
-                  <input
-                    readOnly
-                    value={webhookUrl}
-                    className="flex-1 bg-background border border-border rounded px-2.5 py-1.5 text-xs font-mono select-all text-foreground"
-                  />
-                  <Button size="sm" variant="secondary" onClick={handleCopy}>
-                    {copied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                    {copied ? "Copied" : "Copy"}
-                  </Button>
-                </div>
-                <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
-                  <li>Open your <a href="https://resend.com/webhooks" target="_blank" rel="noreferrer" className="text-primary underline">Resend Webhooks Dashboard</a>.</li>
-                  <li>Click <strong>+ Add Webhook</strong>.</li>
-                  <li>Paste the URL above and select event: <strong>email.received</strong>.</li>
-                  <li>Click <strong>Add Webhook</strong>.</li>
-                </ol>
-              </div>
-            </div>
           </div>
-
-          <p className="text-xs text-emerald-700 bg-emerald-50 p-2 rounded border border-emerald-200">
-            ✓ Once both steps are done, every incoming email to support@yorkieadoptionhome.com will immediately appear in your Inbox and alert both admin Gmail accounts.
-          </p>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground shrink-0">
+            &#10005;
+          </button>
         </div>
 
-        <div className="flex justify-end pt-3 border-t border-border">
-          <Button variant="primary" size="sm" onClick={onClose}>Got it</Button>
+        <div className="px-6 py-5 space-y-5">
+          <section>
+            <Step n={1} title="One MX record, and only one" />
+            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+              Mail for the domain has to arrive at Resend. Two MX records at the same priority split
+              delivery between them at random, which is why replies were being lost rather than
+              merely delayed. Remove every other MX record on the apex.
+            </p>
+            <RecordTable
+              rows={[
+                ["Type", "MX"],
+                ["Host", "@"],
+                ["Value", "inbound-smtp.eu-west-1.amazonaws.com"],
+                ["Priority", "10"],
+              ]}
+              onCopy={() => copy("inbound-smtp.eu-west-1.amazonaws.com", "mx")}
+              copied={copied === "mx"}
+            />
+          </section>
+
+          <section>
+            <Step n={2} title="A webhook subscribed to email.received" />
+            <p className="text-xs text-muted-foreground leading-relaxed mb-2">
+              Resend posts each received message to this endpoint, which files it here and alerts
+              the team.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={webhookUrl}
+                onFocus={(e) => e.currentTarget.select()}
+                className="flex-1 min-w-0 bg-input-background border border-border rounded px-2.5 py-1.5 text-xs font-mono text-foreground"
+              />
+              <Button size="sm" variant="secondary" onClick={() => copy(webhookUrl, "url")}>
+                {copied === "url" ? <Check size={13} /> : <Copy size={13} />}
+                {copied === "url" ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          </section>
+
+          <section>
+            <Step n={3} title="The signing secret" />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Copy the webhook signing secret from Resend into the deployment as{" "}
+              <code className="font-mono text-foreground">RESEND_WEBHOOK_SECRET</code>. Until it is
+              set the endpoint accepts unsigned requests, so anyone who knows the address could file
+              mail into this inbox and make the site send.
+            </p>
+          </section>
+
+          <section className="border-t border-border pt-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button size="sm" variant="secondary" onClick={runProbe} disabled={probing}>
+                {probing ? <Loader2 size={13} className="animate-spin" /> : <HelpCircle size={13} />}
+                Check the endpoint
+              </Button>
+              {probe && (
+                <p className={`text-xs ${probe.ok ? "text-muted-foreground" : "text-destructive"}`}>
+                  {probe.ok
+                    ? probe.verified
+                      ? "Reachable, and signatures are being verified."
+                      : "Reachable, but signatures are NOT verified — set RESEND_WEBHOOK_SECRET."
+                    : probe.detail}
+                </p>
+              )}
+            </div>
+          </section>
         </div>
+
+        <div className="flex justify-end px-6 py-4 border-t border-border">
+          <Button variant="primary" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Step({ n, title }: { n: number; title: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-2">
+      <span className="w-5 h-5 rounded-full border border-primary/50 text-primary text-[10px] flex items-center justify-center shrink-0">
+        {n}
+      </span>
+      <h4 className="text-sm text-foreground">{title}</h4>
+    </div>
+  );
+}
+
+function RecordTable({
+  rows,
+  onCopy,
+  copied,
+}: {
+  rows: Array<[string, string]>;
+  onCopy: () => void;
+  copied: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      <table className="w-full text-xs">
+        <tbody className="divide-y divide-border">
+          {rows.map(([label, value]) => (
+            <tr key={label}>
+              <td className="px-3 py-2 text-muted-foreground w-20 align-top">{label}</td>
+              <td className="px-3 py-2 font-mono text-foreground break-all">{value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="border-t border-border px-3 py-2 bg-sidebar/40 flex justify-end">
+        <button
+          onClick={onCopy}
+          className="text-xs text-accent hover:underline inline-flex items-center gap-1.5"
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+          {copied ? "Copied" : "Copy the value"}
+        </button>
       </div>
     </div>
   );

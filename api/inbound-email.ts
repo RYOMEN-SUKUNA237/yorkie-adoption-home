@@ -1,132 +1,257 @@
-import { createClient } from "@supabase/supabase-js";
-import nodemailer from "nodemailer";
+/**
+ * POST /api/inbound-email — the Resend webhook.
+ *
+ * Three things were wrong with the previous version, and all three showed up
+ * in the Email Center as nonsense:
+ *
+ *  1. It acted on *every* event Resend sends. The webhook is subscribed to
+ *     `email.sent`, `email.delivered`, `email.opened` and the rest, and the
+ *     old guard was `payload.type === "email.received" || payload.data` —
+ *     which is true for all of them. So every outgoing email came straight
+ *     back as a fake *incoming* row and alerted both staff inboxes.
+ *  2. It never verified the signature, so anyone who knew the URL could
+ *     inject mail into the dashboard and make it send.
+ *  3. Its staff alert went out over Gmail SMTP using a password committed to
+ *     the repository.
+ *
+ * This handler uses the Web signature rather than `(req, res)` because Svix
+ * signs the exact request bytes, and `await request.text()` is the only way
+ * to see them — a re-serialised `req.body` will not verify.
+ */
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://ynvdvsnrnhvmauszfhtf.supabase.co";
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_-cJUoLQ3qg2Qpyt9aziSeg_AGgpF9Gn";
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { adminNotifyEmails, db, optional, siteContact, siteOrigin } from "./_lib/server";
+import { sendMail, archive } from "./_lib/mailer";
+import type { EmailDocument } from "./_lib/branding";
 
-const ADMIN_NOTIFY_EMAILS = [
-  "ntuhgireseelezanw@gmail.com",
-  "yannickngwa844@gmail.com",
-];
+const json = (body: unknown, status = 200): Response =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
 
-export default async function handler(req: any, res: any) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
+/**
+ * Svix signature check, as Resend sends it.
+ *
+ * Skipped with a warning when RESEND_WEBHOOK_SECRET is unset, so an existing
+ * deployment keeps working while the secret is being copied over — but an
+ * unverified endpoint is an open door, and the log line says so.
+ */
+function verifySignature(headers: Headers, rawBody: string): { ok: boolean; reason?: string } {
+  const secret = optional("RESEND_WEBHOOK_SECRET");
+  if (!secret) {
+    console.warn(
+      "[inbound-email] RESEND_WEBHOOK_SECRET is not set — accepting the request WITHOUT " +
+        "verifying its signature. Anyone who knows this URL can post to it."
+    );
+    return { ok: true, reason: "unverified" };
   }
 
-  // Allow GET for webhook health check or manual test
-  if (req.method === "GET") {
-    return res.status(200).json({ status: "ok", endpoint: "/api/inbound-email" });
+  const id = headers.get("svix-id");
+  const timestamp = headers.get("svix-timestamp");
+  const signatures = headers.get("svix-signature");
+
+  if (!id || !timestamp || !signatures) return { ok: false, reason: "missing svix headers" };
+
+  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(age) || age > 300) return { ok: false, reason: "timestamp outside tolerance" };
+
+  const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
+  const expected = createHmac("sha256", key).update(`${id}.${timestamp}.${rawBody}`).digest();
+
+  for (const entry of signatures.split(" ")) {
+    const [version, value] = entry.split(",");
+    if (version !== "v1" || !value) continue;
+    const candidate = Buffer.from(value, "base64");
+    if (candidate.length === expected.length && timingSafeEqual(candidate, expected)) {
+      return { ok: true };
+    }
   }
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+  return { ok: false, reason: "no matching signature" };
+}
+
+/** `Ada Lovelace <ada@example.com>` becomes its two halves. */
+function splitAddress(value: unknown): { name: string | null; email: string } {
+  const raw = Array.isArray(value) ? value.join(", ") : String(value ?? "");
+  const match = raw.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  if (match) {
+    const name = match[1].replace(/^["']|["']$/g, "").trim();
+    return { name: name || null, email: match[2].trim() };
   }
+  return { name: null, email: raw.trim() };
+}
+
+const stripHtml = (html: string): string =>
+  html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+/**
+ * Delivery events for mail we sent. The row is already in `public.emails`
+ * from the send, so this only moves its status along.
+ */
+async function recordDeliveryEvent(eventType: string, data: Record<string, any>): Promise<void> {
+  const status = {
+    "email.delivered": "delivered",
+    "email.bounced": "bounced",
+    "email.complained": "complained",
+    "email.delivery_delayed": "delayed",
+    "email.failed": "failed",
+    "email.opened": "opened",
+  }[eventType];
+
+  if (!status) return;
+
+  const providerId = data.email_id ?? data.id;
+  if (!providerId) return;
 
   try {
-    const payload = req.body || {};
-    let from = payload.from || payload.sender || payload.from_email || "Unknown Sender";
-    let to = payload.to || payload.recipient || payload.to_email || "support@yorkieadoptionhome.com";
-    let subject = payload.subject || "No Subject";
-    let text = payload.text || payload.body_text || payload.body || "";
-    let html = payload.html || payload.body_html || "";
+    // `opened` must not overwrite a stronger signal such as `bounced`.
+    const query = db().from("emails").update({ status }).eq("provider_id", providerId);
+    const { error } =
+      status === "opened" ? await query.in("status", ["sent", "delivered"]) : await query;
+    if (error) throw error;
+  } catch (err) {
+    console.warn(`[inbound-email] could not apply ${eventType}:`, err);
+  }
+}
 
-    // Handle Resend Webhook data structure (type: "email.received" or payload.data)
-    if (payload.type === "email.received" || payload.data) {
-      const data = payload.data || {};
-      from = data.from || from;
-      to = Array.isArray(data.to) ? data.to.join(", ") : (data.to || to);
-      subject = data.subject || subject;
-      text = data.text || text;
-      html = data.html || html;
+export default async function handler(request: Request): Promise<Response> {
+  const cors = {
+    "Access-Control-Allow-Origin": siteOrigin(),
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, svix-id, svix-timestamp, svix-signature",
+  };
 
-      // If Resend provided an email_id, attempt to fetch full content from Resend API
-      if (data.email_id && (!text || !html)) {
-        const resendApiKey = process.env.RESEND_API_KEY;
-        if (resendApiKey) {
-          try {
-            const resendRes = await fetch(`https://api.resend.com/emails/${data.email_id}`, {
-              headers: { Authorization: `Bearer ${resendApiKey}` },
-            });
-            if (resendRes.ok) {
-              const emailData = await resendRes.json();
-              from = emailData.from || from;
-              to = Array.isArray(emailData.to) ? emailData.to.join(", ") : (emailData.to || to);
-              subject = emailData.subject || subject;
-              text = emailData.text || text;
-              html = emailData.html || html;
-            }
-          } catch (fetchErr) {
-            console.warn("[inbound-email] Failed to fetch full email body from Resend:", fetchErr);
-          }
-        }
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+
+  // Resend probes the endpoint before it will save it.
+  if (request.method === "GET") {
+    return json({
+      status: "ok",
+      endpoint: "/api/inbound-email",
+      signatureVerification: optional("RESEND_WEBHOOK_SECRET") ? "enabled" : "disabled",
+    });
+  }
+
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  try {
+    const rawBody = await request.text();
+
+    const verified = verifySignature(request.headers, rawBody);
+    if (!verified.ok) {
+      console.warn("[inbound-email] rejected:", verified.reason);
+      return json({ error: "Invalid signature" }, 401);
+    }
+
+    let event: { type?: string; data?: Record<string, any> } = {};
+    try {
+      event = JSON.parse(rawBody || "{}");
+    } catch {
+      return json({ error: "Body is not valid JSON" }, 400);
+    }
+
+    const eventType = String(event.type ?? "");
+    const data = event.data ?? {};
+
+    // Anything that is not a received email is a delivery signal for mail we
+    // sent. Acting on it as if it were inbound is what produced the phantom
+    // rows and the duplicate staff alerts.
+    if (eventType !== "email.received") {
+      await recordDeliveryEvent(eventType, data);
+      return json({ success: true, handled: eventType || "unknown", inbound: false });
+    }
+
+    const providerId: string | null = data.email_id ?? data.id ?? null;
+
+    // Resend retries on any non-2xx, so the same message can arrive twice.
+    if (providerId) {
+      const { data: existing } = await db()
+        .from("emails")
+        .select("id")
+        .eq("provider_id", providerId)
+        .maybeSingle();
+
+      if (existing) {
+        return json({ success: true, deduplicated: true, id: (existing as { id: string }).id });
       }
     }
 
-    const fromString = typeof from === "string" ? from : JSON.stringify(from);
-    const toString = typeof to === "string" ? to : JSON.stringify(to);
+    const from = splitAddress(data.from);
+    const to = Array.isArray(data.to) ? data.to.join(", ") : String(data.to ?? "");
+    const subject = String(data.subject ?? "").trim() || "(no subject)";
+    const html = String(data.html ?? "");
+    const text = String(data.text ?? "").trim() || (html ? stripHtml(html) : "");
 
-    // 1. Insert into public.emails table as incoming email
-    const { data: inserted, error: dbError } = await supabase
-      .from("emails")
-      .insert({
-        direction: "incoming",
-        from_email: fromString,
-        to_email: toString,
-        subject: subject || "(No Subject)",
-        body_text: text || html.replace(/<[^>]*>?/gm, ""),
-        body_html: html || `<p>${text}</p>`,
-        status: "received",
-      })
-      .select("*")
-      .single();
-
-    if (dbError) {
-      console.warn("[inbound-email] Database save error:", dbError.message);
-    }
-
-    // 2. Alert the 2 admin notification emails about the incoming client email
-    const user = process.env.GMAIL_USER || "ntuhgireseelezanw@gmail.com";
-    const pass = (process.env.GMAIL_APP_PASSWORD || "bzcepcaknyhyazexr").replace(/\s+/g, "");
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user, pass },
+    const storedId = await archive({
+      direction: "incoming",
+      from_email: from.email || "unknown",
+      from_name: from.name,
+      to_email: to || (optional("FROM_EMAIL") ?? "support@yorkieadoptionhome.com"),
+      subject,
+      body_text: text,
+      body_html: html || null,
+      status: "received",
+      provider_id: providerId,
     });
 
-    await Promise.all(
-      ADMIN_NOTIFY_EMAILS.map((admin) =>
-        transporter.sendMail({
-          from: `"Yorkshire Adoption Home Mailbox" <${user}>`,
-          to: admin,
-          subject: `[Client Reply] ${subject} from ${fromString}`,
-          text: `You have received a new client email to support@yorkieadoptionhome.com!\n\nFrom: ${fromString}\nSubject: ${subject}\n\nMessage:\n${text}\n\nView and reply in your Admin Dashboard under the Emails tab.`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; background-color: #ffffff;">
-              <h3 style="color: #991b1b; margin-top: 0;">New Client Email Received</h3>
-              <p style="font-size: 14px; color: #475569;">A client has sent an email to <strong>support@yorkieadoptionhome.com</strong>.</p>
-              <div style="background-color: #f8fafc; border-left: 4px solid #991b1b; padding: 14px; margin: 16px 0;">
-                <p style="margin: 0 0 6px 0;"><strong>From:</strong> ${fromString}</p>
-                <p style="margin: 0 0 6px 0;"><strong>Subject:</strong> ${subject}</p>
-                <p style="margin: 0; color: #1e293b; white-space: pre-wrap;">${text || html}</p>
-              </div>
-              <p style="font-size: 13px; color: #64748b;">
-                Log into the Admin Dashboard -> <strong>Emails</strong> to read and reply.
-              </p>
-            </div>
-          `,
-        }).catch((mailErr) => console.warn(`Failed to notify admin ${admin}:`, mailErr))
-      )
-    );
+    // Tell the team, in the same voice as everything else we send.
+    const contact = await siteContact();
+    const origin = siteOrigin();
+    const preview = text.slice(0, 1500);
 
-    return res.status(200).json({ success: true, message: "Inbound email logged and notified." });
-  } catch (err: any) {
-    console.error("[inbound-email error]:", err);
-    return res.status(500).json({ error: err.message || "Failed to process inbound email" });
+    const document: EmailDocument = {
+      siteName: contact.siteName,
+      siteUrl: origin,
+      contactEmail: contact.contactEmail,
+      contactPhone: contact.contactPhone,
+      preheader: `${from.name || from.email}: ${subject}`,
+      eyebrow: "Inbound email",
+      heading: "A client has written in",
+      intro: `${from.name || from.email} sent a message to ${to || "the support mailbox"}.`,
+      blocks: [
+        {
+          kind: "details",
+          rows: [
+            ["From", from.name ? `${from.name} <${from.email}>` : from.email],
+            ["To", to],
+            ["Subject", subject],
+          ],
+        },
+        { kind: "quote", text: preview || "(no message body)" },
+      ],
+      primaryAction: { label: "Open the Email Center", url: `${origin}/admin/emails` },
+      note: "Reply from the dashboard and the thread stays on record.",
+    };
+
+    try {
+      await sendMail({
+        to: adminNotifyEmails(),
+        subject: `Client email — ${subject}`,
+        fromName: `${contact.siteName} Mailbox`,
+        replyTo: from.email || undefined,
+        document,
+        tag: "inbound-alert",
+      });
+    } catch (alertErr) {
+      // The message is safely stored; a failed alert must not make Resend retry.
+      console.warn("[inbound-email] stored the email but could not alert staff:", alertErr);
+    }
+
+    return json({ success: true, inbound: true, id: storedId, verified: verified.reason !== "unverified" });
+  } catch (err) {
+    console.error("[inbound-email]", err);
+    return json({ error: err instanceof Error ? err.message : "Failed to process inbound email" }, 500);
   }
 }

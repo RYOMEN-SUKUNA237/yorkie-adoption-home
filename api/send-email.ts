@@ -1,359 +1,258 @@
-import nodemailer from "nodemailer";
-import { createClient } from "@supabase/supabase-js";
+/**
+ * POST /api/send-email
+ *
+ * The single outbound mail endpoint. Every message is composed as an
+ * `EmailDocument` and rendered by `_lib/branding`, so the templates share one
+ * masthead, one palette and one voice, and every send carries a plain-text
+ * alternative.
+ */
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://ynvdvsnrnhvmauszfhtf.supabase.co";
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_-cJUoLQ3qg2Qpyt9aziSeg_AGgpF9Gn";
-const supabase = createClient(supabaseUrl, supabaseKey);
+import {
+  applyCors,
+  adminNotifyEmails,
+  fail,
+  siteContact,
+  siteOrigin,
+  type ApiRequest,
+  type ApiResponse,
+} from "./_lib/server";
+import { sendMail } from "./_lib/mailer";
+import type { EmailDocument } from "./_lib/branding";
 
-const ADMIN_NOTIFY_EMAILS = [
-  "ntuhgireseelezanw@gmail.com",
-  "yannickngwa844@gmail.com",
-];
+type Payload = Record<string, any>;
 
-async function logEmail(entry: {
-  direction: "incoming" | "outgoing";
-  from_email: string;
-  from_name?: string;
-  to_email: string;
-  subject: string;
-  body_text?: string;
-  body_html?: string;
-}) {
-  try {
-    await supabase.from("emails").insert({
-      direction: entry.direction,
-      from_email: entry.from_email,
-      from_name: entry.from_name || null,
-      to_email: entry.to_email,
-      subject: entry.subject,
-      body_text: entry.body_text || null,
-      body_html: entry.body_html || null,
-      status: "sent",
-    });
-  } catch (err) {
-    console.warn("[api/send-email] Failed to log email to database:", err);
-  }
-}
+const trim = (value: unknown): string => String(value ?? "").trim();
 
-async function dispatchEmail(options: {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-  replyTo?: string;
-  fromName?: string;
-  isClientFacing?: boolean;
-}) {
-  const adminNotifyUser = process.env.GMAIL_USER || "ntuhgireseelezanw@gmail.com";
-  const pass = (process.env.GMAIL_APP_PASSWORD || "bzcepcaknyhyazexr").replace(/\s+/g, "");
-  const resendApiKey = process.env.RESEND_API_KEY || (pass.startsWith("re_") ? pass : null);
-
-  const defaultFromAddress = process.env.FROM_EMAIL || "support@yorkieadoptionhome.com";
-  const defaultReplyTo = options.replyTo || defaultFromAddress;
-  const fromName = options.fromName || "Yorkshire Adoption Home";
-
-  if (resendApiKey) {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: `${fromName} <${defaultFromAddress}>`,
-        to: [options.to],
-        reply_to: defaultReplyTo,
-        subject: options.subject,
-        html: options.html,
-        text: options.text,
-      }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || JSON.stringify(data));
-    }
-
-    if (options.isClientFacing) {
-      await logEmail({
-        direction: "outgoing",
-        from_email: defaultFromAddress,
-        from_name: fromName,
-        to_email: options.to,
-        subject: options.subject,
-        body_text: options.text,
-        body_html: options.html,
-      });
-    }
-
-    return data;
-  } else {
-    // Gmail SMTP fallback
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: adminNotifyUser, pass },
-    });
-
-    const result = await transporter.sendMail({
-      from: `"${fromName}" <${defaultFromAddress}>`,
-      to: options.to,
-      replyTo: defaultReplyTo,
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-    });
-
-    if (options.isClientFacing) {
-      await logEmail({
-        direction: "outgoing",
-        from_email: defaultFromAddress,
-        from_name: fromName,
-        to_email: options.to,
-        subject: options.subject,
-        body_text: options.text,
-        body_html: options.html,
-      });
-    }
-
-    return result;
-  }
-}
-
-export default async function handler(req: any, res: any) {
-  // CORS & Method Check
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+export default async function handler(req: ApiRequest, res: ApiResponse) {
+  if (applyCors(req, res)) return;
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { type, payload } = req.body || {};
+    const { type, payload } = (req.body ?? {}) as { type?: string; payload?: Payload };
 
     if (!type || !payload) {
       return res.status(400).json({ error: "Missing required fields (type, payload)" });
     }
 
-    const siteUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "https://yorkshire-adoption-home.vercel.app";
+    const contact = await siteContact();
+    const origin = siteOrigin();
 
+    /** Shared footer identity for every document below. */
+    const chrome = {
+      siteName: contact.siteName,
+      siteUrl: origin,
+      contactEmail: contact.contactEmail,
+      contactPhone: contact.contactPhone,
+    };
+
+    // -----------------------------------------------------------------
+    // Staff alert: a visitor wrote in through the on-site messenger
+    // -----------------------------------------------------------------
     if (type === "new_message") {
-      const { visitorName, visitorEmail, body, subject } = payload;
+      const visitorName = trim(payload.visitorName) || "A visitor";
+      const visitorEmail = trim(payload.visitorEmail);
+      const subject = trim(payload.subject) || "Support enquiry";
+      const body = trim(payload.body);
 
-      // Send simultaneously to both admin notification inboxes
-      await Promise.all(
-        ADMIN_NOTIFY_EMAILS.map((adminEmail) =>
-          dispatchEmail({
-            to: adminEmail,
-            fromName: "Yorkshire Adoption Home Messenger",
-            subject: `[New Support Message] ${subject || "Inquiry"} from ${visitorName || "Visitor"}`,
-            text: `New support message from ${visitorName || "Visitor"} (${visitorEmail || "No email"})\n\nMessage:\n${body}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; background-color: #ffffff;">
-                <h2 style="color: #991b1b; margin-top: 0;">New Support Message Received</h2>
-                <p style="color: #4b5563;">A visitor has sent a support message on Yorkshire Adoption Home.</p>
-                <div style="background-color: #f9fafb; border-left: 4px solid #991b1b; padding: 16px; margin: 20px 0;">
-                  <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${visitorName || "Anonymous"}</p>
-                  <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${visitorEmail || "Not provided"}</p>
-                  <p style="margin: 0;"><strong>Message:</strong></p>
-                  <p style="margin: 8px 0 0 0; color: #1f2937; white-space: pre-wrap;">${body}</p>
-                </div>
-                <p style="font-size: 13px; color: #6b7280;">Log in to the dashboard to reply to this message directly.</p>
-              </div>
-            `,
-            isClientFacing: false,
-          })
-        )
-      );
+      const document: EmailDocument = {
+        ...chrome,
+        preheader: `${visitorName} sent a message: ${body.slice(0, 90)}`,
+        eyebrow: "Support messenger",
+        heading: "A visitor has started a conversation",
+        intro: `${visitorName} sent a message through the live chat on the site.`,
+        blocks: [
+          {
+            kind: "details",
+            rows: [
+              ["Name", visitorName],
+              ["Email", visitorEmail || "Not provided"],
+              ["Subject", subject],
+            ],
+          },
+          { kind: "quote", text: body, attribution: visitorName },
+        ],
+        primaryAction: { label: "Open the messenger", url: `${origin}/admin/messages` },
+        note: "Replies sent from the dashboard reach the visitor by email as well as in the chat window.",
+      };
 
-      return res.status(200).json({ success: true, message: "Support message notifications sent to admin emails." });
+      await sendMail({
+        to: adminNotifyEmails(),
+        subject: `New support message — ${subject} (${visitorName})`,
+        fromName: `${contact.siteName} Messenger`,
+        replyTo: visitorEmail || undefined,
+        document,
+        tag: "staff-alert",
+      });
+
+      return res.status(200).json({ success: true, message: "Support alert sent to staff." });
     }
 
+    // -----------------------------------------------------------------
+    // Staff alert: a new adoption application arrived
+    // -----------------------------------------------------------------
     if (type === "new_application") {
-      const { reference, firstName, lastName, email, phone, puppyName, score, city, country } = payload;
+      const reference = trim(payload.reference);
+      const firstName = trim(payload.firstName);
+      const lastName = trim(payload.lastName);
+      const applicantName = `${firstName} ${lastName}`.trim() || "Applicant";
+      const score = payload.score;
+      const location = [trim(payload.city), trim(payload.country)].filter(Boolean).join(", ");
 
-      // Send simultaneously to both admin notification inboxes
-      await Promise.all(
-        ADMIN_NOTIFY_EMAILS.map((adminEmail) =>
-          dispatchEmail({
-            to: adminEmail,
-            fromName: "Yorkshire Adoption Home System",
-            subject: `[New Application] ${reference} - ${firstName} ${lastName} (${puppyName || "Any Puppy"})`,
-            text: `New adoption application received.\nReference: ${reference}\nApplicant: ${firstName} ${lastName}\nEmail: ${email}\nPhone: ${phone}\nLocation: ${city}, ${country}\nPuppy: ${puppyName || "Any"}\nScore: ${score}/100`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; background-color: #ffffff;">
-                <div style="background-color: #991b1b; color: #ffffff; padding: 16px; border-radius: 6px 6px 0 0; text-align: center;">
-                  <h2 style="margin: 0; font-size: 20px;">New Adoption Application Submitted</h2>
-                </div>
-                <div style="padding: 20px 0;">
-                  <p style="font-size: 15px; color: #374151;">A new adoption application has been submitted and scored by the system.</p>
-                  
-                  <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
-                    <tr>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Reference:</td>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee;">${reference}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Applicant:</td>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee;">${firstName} ${lastName}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Email:</td>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee;"><a href="mailto:${email}">${email}</a></td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Phone:</td>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee;">${phone}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Location:</td>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee;">${city}, ${country}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Puppy Preferred:</td>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee;">${puppyName || "Open to any puppy"}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Rubric Score:</td>
-                      <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #059669;">${score ?? "N/A"} / 100</td>
-                    </tr>
-                  </table>
+      const document: EmailDocument = {
+        ...chrome,
+        preheader: `${applicantName} applied for ${trim(payload.puppyName) || "any puppy"} — reference ${reference}`,
+        eyebrow: "Adoption application",
+        heading: "A new application is waiting for review",
+        intro: `${applicantName} completed the adoption questionnaire. The rubric has already scored it.`,
+        blocks: [
+          {
+            kind: "details",
+            rows: [
+              ["Reference", reference],
+              ["Applicant", applicantName],
+              ["Email", trim(payload.email)],
+              ["Phone", trim(payload.phone)],
+              ["Location", location],
+              ["Puppy", trim(payload.puppyName) || "Open to any puppy"],
+              ["Rubric score", score == null ? "Not scored" : `${score} out of 100`],
+              [
+                "Notification choice",
+                trim(payload.notificationPreference) === "whatsapp"
+                  ? "WhatsApp only"
+                  : trim(payload.notificationPreference) === "both"
+                    ? "Email and WhatsApp"
+                    : "Email only",
+              ],
+            ],
+          },
+        ],
+        primaryAction: { label: "Review the application", url: `${origin}/admin/applications` },
+        note: "The score is guidance, not a decision. Read the answers in full before approving.",
+      };
 
-                  <div style="margin-top: 24px; text-align: center;">
-                    <a href="${siteUrl}/admin/applications" style="background-color: #991b1b; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Review Application in Admin Dashboard</a>
-                  </div>
-                </div>
-              </div>
-            `,
-            isClientFacing: false,
-          })
-        )
-      );
+      await sendMail({
+        to: adminNotifyEmails(),
+        subject: `New application ${reference} — ${applicantName}`,
+        fromName: `${contact.siteName} Applications`,
+        replyTo: trim(payload.email) || undefined,
+        document,
+        tag: "staff-alert",
+      });
 
-      return res.status(200).json({ success: true, message: "Application notification emails sent." });
+      return res.status(200).json({ success: true, message: "Application alert sent to staff." });
     }
 
+    // -----------------------------------------------------------------
+    // Client: the application was approved
+    // -----------------------------------------------------------------
     if (type === "application_approved") {
-      const {
-        applicantEmail,
-        applicantName,
-        reference,
-        puppyName,
-        applicationId,
-        sellerWhatsApp,
-      } = payload;
+      const applicantEmail = trim(payload.applicantEmail);
+      if (!applicantEmail) {
+        return res.status(400).json({ error: "application_approved requires applicantEmail" });
+      }
 
-      const certUrl = `https://www.yorkieadoptionhome.com/certificate/${applicationId || reference}`;
-      const chatUrl = `https://www.yorkieadoptionhome.com?chat=open&ref=${encodeURIComponent(reference)}`;
-      const waNumberClean = (sellerWhatsApp || "12188332266").replace(/\D/g, "");
-      const waDirectUrl = `https://wa.me/${waNumberClean}?text=${encodeURIComponent(
-        `Hello! My adoption application (${reference}) for ${puppyName || "a Yorkshire puppy"} has been APPROVED. Here is my official proof certificate: ${certUrl}`
-      )}`;
+      const applicantName = trim(payload.applicantName) || "there";
+      const reference = trim(payload.reference);
+      const puppyName = trim(payload.puppyName) || "your chosen puppy";
+      const certUrl = `${origin}/certificate/${trim(payload.applicationId) || reference}`;
+      const chatUrl = `${origin}/?chat=open&ref=${encodeURIComponent(reference)}`;
 
-      await dispatchEmail({
+      const document: EmailDocument = {
+        ...chrome,
+        preheader: `Your application for ${puppyName} has been approved. Reference ${reference}.`,
+        eyebrow: "Application approved",
+        heading: `Congratulations, ${applicantName.split(" ")[0]}`,
+        intro: `Your application to adopt ${puppyName} has been reviewed and approved. Your certificate of approval is ready.`,
+        blocks: [
+          {
+            kind: "details",
+            title: "Certificate of approval",
+            rows: [
+              ["Reference", reference],
+              ["Puppy", puppyName],
+              ["Applicant", trim(payload.applicantName)],
+              ["Status", "Approved"],
+            ],
+          },
+          {
+            kind: "callout",
+            title: "What happens next",
+            text:
+              "Open the support chat on our website and quote your reference. We complete identity " +
+              "verification, send the adoption agreement for signature, and agree collection or " +
+              "delivery from there.",
+          },
+          {
+            kind: "paragraph",
+            text:
+              "Your certificate can be viewed, printed or saved as a PDF at any time using the button " +
+              "below. Keep the reference to hand — we ask for it at every step.",
+          },
+        ],
+        primaryAction: { label: "View your certificate", url: certUrl },
+        secondaryAction: { label: "Continue in the support chat", url: chatUrl },
+        note:
+          "We never ask for payment details by email, and we will never ask you to pay anyone who " +
+          "contacts you claiming to represent us. If in doubt, reach us through the website.",
+      };
+
+      await sendMail({
         to: applicantEmail,
-        fromName: "Yorkshire Adoption Home",
-        subject: `🎉 Congratulations! Your Adoption Application Has Been APPROVED (${reference})`,
-        text: `Dear ${applicantName},\n\nYour adoption application (${reference}) for ${puppyName || "your requested puppy"} has been APPROVED!\n\nView Proof Certificate: ${certUrl}\n\n👉 NEXT REQUIRED STEP: Please chat with our Support Team on our website to finalize verification:\n${chatUrl}\n\nThank you,\nYorkshire Adoption Home Team`,
-        html: `
-          <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 650px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-            <div style="background-color: #7f1d1d; color: #ffffff; padding: 32px 24px; text-align: center;">
-              <div style="font-size: 13px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9; margin-bottom: 8px;">Official Notification</div>
-              <h1 style="margin: 0; font-size: 26px; font-weight: 700;">Adoption Application Approved!</h1>
-            </div>
-            
-            <div style="padding: 32px 28px;">
-              <p style="font-size: 16px; color: #334155; line-height: 1.6;">Dear <strong>${applicantName}</strong>,</p>
-              
-              <p style="font-size: 16px; color: #334155; line-height: 1.6;">
-                We are delighted to inform you that your adoption application for <strong>${puppyName || "your requested puppy"}</strong> has been officially <span style="color: #15803d; font-weight: bold;">APPROVED</span>!
-              </p>
-
-              <div style="background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 10px; padding: 24px; margin: 24px 0; text-align: center;">
-                <span style="display: inline-block; background-color: #dcfce7; color: #166534; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 9999px; margin-bottom: 12px;">OFFICIAL APPROVAL PROOF</span>
-                <h3 style="margin: 0 0 6px 0; color: #0f172a; font-size: 20px;">Reference ID: ${reference}</h3>
-                <p style="margin: 0 0 16px 0; color: #64748b; font-size: 14px;">Yorkshire Adoption Home Official Verification</p>
-                <a href="${certUrl}" style="background-color: #0f172a; color: #ffffff; padding: 11px 22px; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600; display: inline-block;">📄 View Official Certificate & Download PDF</a>
-              </div>
-
-              <div style="background-color: #fff7ed; border-left: 4px solid #f97316; padding: 20px; border-radius: 0 8px 8px 0; margin-bottom: 28px;">
-                <h4 style="margin: 0 0 8px 0; color: #9a3412; font-size: 16px; font-weight: 700;">👉 NEXT REQUIRED STEP TO FINALIZE ADOPTION:</h4>
-                <p style="margin: 0 0 16px 0; color: #c2410c; font-size: 14px; line-height: 1.6;">
-                  Please open our live on-site <strong>Support Chat</strong> to speak directly with our team. Quote your Reference ID (<strong>${reference}</strong>) to complete final identity verification, sign agreements, and arrange puppy pickup/delivery details.
-                </p>
-                <div style="text-align: center;">
-                  <a href="${chatUrl}" style="background-color: #991b1b; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 2px 4px rgba(153, 27, 27, 0.3);">💬 Chat with Adoption Support on Website</a>
-                </div>
-              </div>
-
-              <div style="text-align: center; margin: 16px 0 8px 0;">
-                <span style="font-size: 12px; color: #94a3b8; display: block; margin-bottom: 8px;">Prefer WhatsApp instead?</span>
-                <a href="${waDirectUrl}" style="color: #16a34a; font-size: 13px; font-weight: 600; text-decoration: underline;">Open WhatsApp chat with representative →</a>
-              </div>
-
-              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 32px 0 20px 0;" />
-              <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">
-                Yorkshire Adoption Home · Official Automated Approval Notice<br/>
-                Need help? Visit our website and click the floating chat icon at the bottom right.
-              </p>
-            </div>
-          </div>
-        `,
-        isClientFacing: true,
+        subject: `Your adoption application has been approved — ${reference}`,
+        document,
+        archive: true,
+        tag: "approval",
       });
 
-      return res.status(200).json({ success: true, message: "Approval confirmation email sent to applicant." });
+      return res.status(200).json({ success: true, message: "Approval email sent to the applicant." });
     }
 
+    // -----------------------------------------------------------------
+    // Client: a reply from the dashboard, or a composed email
+    // -----------------------------------------------------------------
     if (type === "admin_reply" || type === "direct_email") {
-      const { visitorEmail, toEmail, visitorName, clientName, subject, replyBody, messageBody } = payload;
-      const recipient = toEmail || visitorEmail;
-      const name = clientName || visitorName || "Client";
-      const bodyText = messageBody || replyBody;
+      const recipient = trim(payload.toEmail) || trim(payload.visitorEmail);
+      if (!recipient) {
+        return res.status(400).json({ error: "A recipient email address is required" });
+      }
 
-      await dispatchEmail({
+      const name = trim(payload.clientName) || trim(payload.visitorName);
+      const body = trim(payload.messageBody) || trim(payload.replyBody);
+      if (!body) {
+        return res.status(400).json({ error: "A message body is required" });
+      }
+
+      const subject = trim(payload.subject) || `A message from ${contact.siteName}`;
+      const greeting = name ? `Hello ${name.split(" ")[0]},` : "Hello,";
+
+      const document: EmailDocument = {
+        ...chrome,
+        preheader: body.slice(0, 110),
+        eyebrow: type === "admin_reply" ? "Reply from our team" : "From our team",
+        heading: subject,
+        intro: greeting,
+        blocks: [{ kind: "paragraph", text: body }],
+        primaryAction: { label: "Visit the website", url: origin },
+        note: "You can reply straight to this email — it reaches the same team.",
+      };
+
+      await sendMail({
         to: recipient,
-        fromName: "Yorkshire Adoption Home Support",
-        subject: subject || "Update from Yorkshire Adoption Home",
-        text: `Dear ${name},\n\n${bodyText}\n\n---\nYorkshire Adoption Home Support\n${siteUrl}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; padding: 24px; background-color: #ffffff;">
-            <div style="border-bottom: 2px solid #991b1b; padding-bottom: 12px; margin-bottom: 20px;">
-              <h2 style="margin: 0; color: #991b1b; font-size: 18px;">Yorkshire Adoption Home Support</h2>
-            </div>
-            
-            <p style="font-size: 15px; color: #334155; line-height: 1.6;">Hello <strong>${name}</strong>,</p>
-
-            <div style="background-color: #f8fafc; border-left: 4px solid #991b1b; padding: 18px; border-radius: 0 6px 6px 0; margin: 20px 0;">
-              <p style="margin: 0; color: #0f172a; font-size: 15px; line-height: 1.6; white-space: pre-wrap;">${bodyText}</p>
-            </div>
-
-            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 24px;">
-              If you have further questions, simply reply directly to this email or chat with us on our website.
-            </p>
-
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 16px 0;" />
-            <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
-              Yorkshire Adoption Home · <a href="${siteUrl}" style="color: #991b1b; text-decoration: none;">Visit Website</a>
-            </p>
-          </div>
-        `,
-        isClientFacing: true,
+        subject,
+        fromName: `${contact.siteName} Support`,
+        document,
+        archive: true,
+        tag: type === "admin_reply" ? "reply" : "direct",
       });
 
-      return res.status(200).json({ success: true, message: "Email sent successfully to client." });
+      return res.status(200).json({ success: true, message: "Email sent." });
     }
 
-    return res.status(400).json({ error: "Invalid email notification type" });
-  } catch (err: any) {
-    console.error("[api/send-email error]:", err);
-    return res.status(500).json({ error: err.message || "Failed to send email" });
+    return res.status(400).json({ error: `Unknown email type: ${type}` });
+  } catch (err) {
+    return fail(res, err, "api/send-email");
   }
 }

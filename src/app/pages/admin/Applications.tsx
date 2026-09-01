@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   X, ChevronRight, Search, Download, Mail, Phone, Trash2, Loader2, Send,
+  Check, MinusCircle, AlertTriangle, MessageCircle,
 } from "lucide-react";
 import { useRouter } from "../../router";
 import { useAsync, useDebounced } from "../../../hooks/useAsync";
 import {
   addApplicationNote, applicationsToCsv, deleteApplication, getApplication,
   listApplicationNotes, listApplications, updateApplicationStatus,
-  type ListApplicationsOptions,
+  type ChannelOutcome, type ListApplicationsOptions, type NotificationReport,
 } from "../../../services/applications";
 import { downloadCsv } from "../../../services/misc";
 import type {
@@ -291,6 +292,7 @@ function ApplicationDrawer({
   const [decisionNote, setDecisionNote] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notified, setNotified] = useState<NotificationReport | null>(null);
 
   useEffect(() => {
     if (app.data) setDecisionNote(app.data.decision_note ?? "");
@@ -310,11 +312,13 @@ function ApplicationDrawer({
   const changeStatus = async (status: ApplicationStatus) => {
     setBusy(true);
     setError(null);
+    setNotified(null);
     try {
-      await updateApplicationStatus(id, status, decisionNote || undefined);
+      const report = await updateApplicationStatus(id, status, decisionNote || undefined);
       app.setData((current) => (current ? { ...current, status } : current));
       onChanged({ status });
       notes.reload();
+      setNotified(report);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update the status.");
     } finally {
@@ -390,6 +394,8 @@ function ApplicationDrawer({
                   {error}
                 </p>
               )}
+
+              {notified && <NotificationReceipt report={notified} />}
 
               <Section title="Contact">
                 <div className="flex flex-col gap-2">
@@ -666,4 +672,70 @@ function Detail({
 
 function Prose({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{children}</p>;
+}
+
+// ---------------------------------------------------------------------
+// Notification receipt
+// ---------------------------------------------------------------------
+
+const PREFERENCE_LABEL: Record<NotificationReport["preference"], string> = {
+  email: "email only",
+  whatsapp: "WhatsApp only",
+  both: "email and WhatsApp",
+};
+
+/**
+ * Approving an application sends the applicant a message. The reviewer is
+ * shown what went out and what did not, because the dispatch used to be fire
+ * and forget: a refused WhatsApp send looked exactly like a delivered one.
+ */
+function NotificationReceipt({ report }: { report: NotificationReport }) {
+  const failed = [report.email, report.whatsapp].some((c) => c.attempted && !c.delivered);
+
+  return (
+    <div
+      className={`rounded-lg border p-3 ${
+        failed ? "border-primary/40 bg-primary/5" : "border-border bg-muted/40"
+      }`}
+      role="status"
+    >
+      <p className="text-xs font-medium text-foreground mb-2">
+        Approval notifications &mdash; applicant chose {PREFERENCE_LABEL[report.preference]}
+      </p>
+      <ul className="flex flex-col gap-1.5">
+        <ChannelLine icon={<Mail size={13} />} label="Email" outcome={report.email} />
+        <ChannelLine icon={<MessageCircle size={13} />} label="WhatsApp" outcome={report.whatsapp} />
+      </ul>
+    </div>
+  );
+}
+
+function ChannelLine({
+  icon,
+  label,
+  outcome,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  outcome: ChannelOutcome;
+}) {
+  const state = !outcome.attempted
+    ? { tone: "text-muted-foreground", mark: <MinusCircle size={13} />, text: "Not sent" }
+    : outcome.delivered
+      ? { tone: "text-foreground", mark: <Check size={13} />, text: "Sent" }
+      : { tone: "text-primary", mark: <AlertTriangle size={13} />, text: "Failed" };
+
+  return (
+    <li className={`flex items-start gap-2 text-xs ${state.tone}`}>
+      <span className="shrink-0 mt-0.5 text-muted-foreground">{icon}</span>
+      <span className="shrink-0 font-medium">{label}</span>
+      <span className="shrink-0 flex items-center gap-1">
+        {state.mark}
+        {state.text}
+      </span>
+      {outcome.detail && (
+        <span className="text-muted-foreground break-words">&mdash; {outcome.detail}</span>
+      )}
+    </li>
+  );
 }

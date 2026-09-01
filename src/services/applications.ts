@@ -141,6 +141,7 @@ export async function submitApplication(
           score: result.score,
           city: input.city,
           country: input.country,
+          notificationPreference: input.notificationPreference || "email",
         },
       }),
     });
@@ -231,11 +232,57 @@ export async function getApprovalCertificate(lookupKey: string): Promise<Applica
   return (data as ApplicationRow) ?? null;
 }
 
+/** What each channel did, so the reviewer is told rather than left guessing. */
+export interface ChannelOutcome {
+  attempted: boolean;
+  delivered: boolean;
+  detail?: string;
+}
+
+export interface NotificationReport {
+  email: ChannelOutcome;
+  whatsapp: ChannelOutcome;
+  /** The applicant's own choice, which decides what was attempted. */
+  preference: "email" | "whatsapp" | "both";
+}
+
+const skipped = (detail: string): ChannelOutcome => ({ attempted: false, delivered: false, detail });
+
+/**
+ * Fire one notification channel and report the outcome.
+ *
+ * These calls are awaited rather than left as `void fetch(...)`. Fire and
+ * forget meant a rejected WhatsApp send or an unconfigured provider looked
+ * exactly like a successful one from the dashboard.
+ */
+async function dispatch(url: string, body: unknown): Promise<ChannelOutcome> {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = (await res.json().catch(() => ({}))) as { error?: string; success?: boolean };
+
+    if (!res.ok || data.success === false) {
+      return { attempted: true, delivered: false, detail: data.error || `Request failed (${res.status})` };
+    }
+    return { attempted: true, delivered: true };
+  } catch (err) {
+    return {
+      attempted: true,
+      delivered: false,
+      detail: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
 export async function updateApplicationStatus(
   id: string,
   status: ApplicationStatus,
   decisionNote?: string
-): Promise<void> {
+): Promise<NotificationReport | null> {
   const db = requireSupabase();
   const { data: session } = await db.auth.getUser();
 
@@ -251,53 +298,73 @@ export async function updateApplicationStatus(
 
   if (error) throw error;
 
-  // Automated notification dispatch on approval — always notify via all available channels
-  if (status === "approved") {
-    try {
-      const app = await getApplication(id);
-      if (app) {
-        const origin = typeof window !== "undefined" ? window.location.origin : "https://www.yorkieadoptionhome.com";
-        const certUrl = `${origin}/certificate/${app.reference || app.id}`;
-        const applicantName = `${app.first_name} ${app.last_name}`;
+  if (status !== "approved") return null;
 
-        // 1. ALWAYS send approval email to the applicant
-        void fetch("/api/send-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "application_approved",
-            payload: {
-              applicantEmail: app.email,
-              applicantName,
-              reference: app.reference,
-              puppyName: app.puppy_name || "Yorkshire Puppy",
-              applicationId: app.reference || app.id,
-            },
-          }),
-        });
+  // ---------------------------------------------------------------
+  // Approval notifications, on the channel the applicant asked for.
+  // ---------------------------------------------------------------
+  const app = await getApplication(id);
+  if (!app) return null;
 
-        // 2. ALWAYS send WhatsApp if any phone number is on record
-        const recipientPhone = app.applicant_whatsapp || app.phone;
-        if (recipientPhone) {
-          const waMessage = `🎉 Hello ${applicantName}! Your adoption application (${app.reference}) for ${app.puppy_name || "a Yorkshire puppy"} has been APPROVED!\n\nPlease view your official Proof Certificate here:\n${certUrl}\n\n👉 REQUIRED STEP: Please contact the seller via the website to complete final verification and pickup arrangements.`;
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "https://www.yorkieadoptionhome.com";
+  const certUrl = `${origin}/certificate/${app.reference || app.id}`;
+  const applicantName = `${app.first_name} ${app.last_name}`.trim();
+  const puppyName = app.puppy_name || "your Yorkshire puppy";
 
-          void fetch("/api/send-whatsapp", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              recipientPhone,
-              recipientName: applicantName,
-              message: waMessage,
-              reference: app.reference,
-              certUrl,
-            }),
-          });
-        }
-      }
-    } catch (notifyErr) {
-      console.warn("[applications] Approval notification error:", notifyErr);
+  const preference = app.notification_preference ?? "email";
+  const wantsEmail = preference === "email" || preference === "both";
+  const wantsWhatsApp = preference === "whatsapp" || preference === "both";
+
+  const report: NotificationReport = {
+    preference,
+    email: skipped("The applicant chose WhatsApp only."),
+    whatsapp: skipped("The applicant chose email only."),
+  };
+
+  if (wantsEmail) {
+    report.email = app.email
+      ? await dispatch("/api/send-email", {
+          type: "application_approved",
+          payload: {
+            applicantEmail: app.email,
+            applicantName,
+            reference: app.reference,
+            puppyName: app.puppy_name || "your Yorkshire puppy",
+            applicationId: app.reference || app.id,
+          },
+        })
+      : skipped("No email address on the application.");
+  }
+
+  if (wantsWhatsApp) {
+    const recipientPhone = app.applicant_whatsapp || app.phone;
+
+    if (!recipientPhone) {
+      report.whatsapp = skipped("No phone number on the application.");
+    } else {
+      const message =
+        `Hello ${applicantName || "there"} — your adoption application ${app.reference} for ` +
+        `${puppyName} has been approved.\n\n` +
+        `Your certificate of approval: ${certUrl}\n\n` +
+        `Next step: open the support chat on our website and quote reference ${app.reference} ` +
+        `to complete verification and arrange collection.\n\n` +
+        `${origin}`;
+
+      report.whatsapp = await dispatch("/api/send-whatsapp", {
+        recipientPhone,
+        recipientName: applicantName,
+        message,
+        reference: app.reference,
+        // Ordered substitutions for the approved WhatsApp template, used when
+        // one is configured — free-form text is refused outside the 24-hour
+        // service window.
+        templateParams: [applicantName || "there", app.reference ?? "", puppyName, certUrl],
+      });
     }
   }
+
+  return report;
 }
 
 export async function deleteApplication(id: string): Promise<void> {

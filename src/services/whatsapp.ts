@@ -30,3 +30,37 @@ export async function deleteWhatsAppLog(id: string): Promise<void> {
   const { error } = await db.from("whatsapp_logs").delete().eq("id", id);
   if (error) throw error;
 }
+
+/** What the serverless endpoint reports about its own configuration. */
+export interface WhatsAppGatewayStatus {
+  provider: "meta" | "twilio" | "none";
+  /** True when a provider is configured and sends need no human step. */
+  automatic: boolean;
+  hint?: string;
+}
+
+/**
+ * Ask the API which gateway it has credentials for.
+ *
+ * The dashboard needs this to explain a silent failure honestly: without it,
+ * an unconfigured provider is indistinguishable from a working one until a
+ * client fails to receive their approval.
+ */
+export async function getWhatsAppGatewayStatus(): Promise<WhatsAppGatewayStatus> {
+  try {
+    const res = await fetch("/api/send-whatsapp", { method: "GET" });
+    if (!res.ok) throw new Error(`Status endpoint returned ${res.status}`);
+    const data = (await res.json()) as WhatsAppGatewayStatus;
+    return {
+      provider: data.provider ?? "none",
+      automatic: Boolean(data.automatic),
+      hint: data.hint,
+    };
+  } catch {
+    return {
+      provider: "none",
+      automatic: false,
+      hint: "The WhatsApp endpoint could not be reached. In local development it only exists on a Vercel deployment.",
+    };
+  }
+}
