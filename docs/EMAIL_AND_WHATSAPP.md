@@ -102,6 +102,57 @@ creates an inbound row.
 > alerted both staff inboxes. If the Email Center is full of copies of its own
 > sent mail, that is where they came from.
 
+### The webhook does not contain the body
+
+This is the single most confusing thing about Resend inbound, and it cost a
+round of debugging. The `email.received` event carries **metadata only**:
+
+```
+id  from  to  cc  bcc  reply_to  subject  message_id  attachments  created_at
+```
+
+No `text`, no `html`. The body must be fetched separately:
+
+```
+GET https://api.resend.com/emails/receiving/{id}     -> text, html, raw, headers
+GET https://api.resend.com/emails/receiving          -> list of received messages
+```
+
+Neither endpoint appears under `/emails/{id}`, which is for *sent* mail and
+answers `404 Email not found` for a received id. `api/inbound-email.ts` fetches
+the body whenever the event arrives without one.
+
+The symptom, if this ever regresses, is exact: mail appears in the Email Center
+with the correct sender and subject and nothing to read.
+
+### Archiving needs no read privilege
+
+`archive()` inserts without `.select()`. Migration 0011 leaves the publishable
+key INSERT-only, and asking for the inserted row back needs SELECT as well, so
+`.insert().select()` is refused with `42501` — and because archiving swallows
+its own errors to avoid failing a delivered email, that refusal was silent and
+every received message was dropped. Deduplication therefore rides on the unique
+index over `provider_id`, catching `23505`, rather than on a lookup.
+
+Confirm the privilege boundary directly if in doubt:
+
+```bash
+# 42501 permission denied
+curl -X POST -H "apikey: $ANON" -H "Prefer: return=representation" ...
+# 201 created
+curl -X POST -H "apikey: $ANON" -H "Prefer: return=minimal" ...
+```
+
+Delivery and bounce events are an `UPDATE`, which the publishable key is not
+granted and should not be. Those statuses stay at `sent` until
+`SUPABASE_SERVICE_ROLE_KEY` is set.
+
+### Self-addressed mail is dropped
+
+Inbound mail whose sender is `FROM_EMAIL` is neither archived nor alerted on.
+It is only ever a pipeline test, and with an auto-responder on the far end it is
+the beginning of a loop.
+
 ### 3. `RESEND_WEBHOOK_SECRET`
 
 From Resend → Webhooks → the endpoint → signing secret. Until it is set the
@@ -245,4 +296,23 @@ dig +short MX yorkieadoptionhome.com
 
 Then send a real email to `support@yorkieadoptionhome.com` and watch it appear
 under Email Center → Inbox. That is the only test that exercises the whole
-path.
+path. Allow up to a minute: Resend accepts the message within seconds but the
+webhook can lag well behind that.
+
+## Repairing the inbox
+
+```bash
+npm run db:repair-inbox                       # report, changes nothing
+node scripts/repair-inbox.mjs --apply         # act
+node scripts/repair-inbox.mjs --show "subject" # print a stored body
+```
+
+It deletes rows that are really the site's own outgoing mail, and re-reads
+genuine received messages from Resend to fill in bodies the old handler never
+fetched. Run against production once already: of 77 stored incoming rows, 76
+were the site emailing itself — 24 application alerts, 20 messenger alerts, 16
+approval emails, 12 support replies, 2 with the literal sender
+`Unknown Sender`, and one row from the removed test button.
+
+`--show` is the part worth remembering. A row existing proves the webhook
+fired; only its body proves the fetch worked.
