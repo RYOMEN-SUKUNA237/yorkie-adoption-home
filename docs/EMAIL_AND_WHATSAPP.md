@@ -49,15 +49,17 @@ body text into the inbox preview.
 
 ## Receiving
 
-This was broken for a structural reason, not a code one: the Resend domain had
-`receiving: disabled`, so mail was refused whatever the DNS said. Enabling it
-makes Resend issue a regional inbound MX host.
+This was broken for a structural reason before it was ever a code one: the
+Resend domain had `receiving: disabled`, so mail was refused whatever the DNS
+said. Enabling it makes Resend issue a regional inbound MX host. It is enabled
+now, and the domain reports `sending: enabled, receiving: enabled` with all
+four records verified.
 
 Three things must all be true.
 
 ### 1. One MX record, and only one
 
-The zone had two at the same priority:
+The zone used to carry two at the same priority:
 
 ```
 10  inbound.resend.com                  <- does not exist
@@ -67,9 +69,8 @@ The zone had two at the same priority:
 Equal priority means a sender picks at random, so roughly half of all mail went
 to Northwest — where nothing in this app can see it — and the other half to a
 hostname that does not resolve. That is the whole reason replies vanished
-rather than merely arriving late.
-
-The correct record, and nothing else on the apex:
+rather than merely arriving late. Both are gone. What is there now, and the
+only MX record that may be on the apex:
 
 | Type | Host | Value                                  | Priority |
 | ---- | ---- | -------------------------------------- | -------- |
@@ -101,6 +102,33 @@ creates an inbound row.
 > event, so each outgoing email came straight back as a fake *incoming* row and
 > alerted both staff inboxes. If the Email Center is full of copies of its own
 > sent mail, that is where they came from.
+
+### 3. `RESEND_WEBHOOK_SECRET`
+
+From Resend → Webhooks → the endpoint → signing secret. Until it is set the
+handler logs a warning and accepts unsigned requests, so anyone who knows the
+URL can file mail into the dashboard and make the site send email. Set it.
+
+### DMARC
+
+The zone used to carry **two** DMARC records:
+
+```
+v=DMARC1; p=none;                                    <- removed
+v=DMARC1; p=quarantine; rua=mailto:bounce@dmarc...   <- kept
+```
+
+RFC 7489 says a domain publishing more than one DMARC record has no valid
+policy at all, so neither was being applied. The surviving record is the
+`p=quarantine` one, which also carries reporting. Never add a second.
+
+Alignment passes because Resend signs with `d=yorkieadoptionhome.com`, which
+matches the From: domain exactly — the apex SPF record does not need to list
+Resend, since the Return-Path sits under the `send.` subdomain.
+
+---
+
+## How receiving actually works
 
 ### The webhook does not contain the body
 
@@ -152,27 +180,6 @@ granted and should not be. Those statuses stay at `sent` until
 Inbound mail whose sender is `FROM_EMAIL` is neither archived nor alerted on.
 It is only ever a pipeline test, and with an auto-responder on the far end it is
 the beginning of a loop.
-
-### 3. `RESEND_WEBHOOK_SECRET`
-
-From Resend → Webhooks → the endpoint → signing secret. Until it is set the
-handler logs a warning and accepts unsigned requests, so anyone who knows the
-URL can file mail into the dashboard and make the site send email. Set it.
-
-### DMARC
-
-The zone carries **two** DMARC records:
-
-```
-v=DMARC1; p=none;
-v=DMARC1; p=quarantine; rua=mailto:bounce@dmarc.businessidentity.llc; ...
-```
-
-RFC 7489 says a domain publishing more than one DMARC record has no valid
-policy at all, so both are being ignored. Delete one — keep the
-`p=quarantine` record, which also has reporting. Alignment still passes either
-way, because Resend signs with `d=yorkieadoptionhome.com`, which matches the
-From: domain exactly.
 
 ---
 
