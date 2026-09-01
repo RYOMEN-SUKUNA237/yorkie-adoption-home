@@ -184,13 +184,25 @@ route but `/` returns 404 on a hard refresh, because the client router owns
 the paths.
 
 The site is served at **yorkieadoptionhome.com**, registered at Northwest
-Registered Agent, which also holds the DNS. Vercel treats `www` as the
-primary hostname and 308-redirects the apex to it, so both records matter:
+Registered Agent, which also holds the DNS. `www` is the primary hostname and
+the apex redirects to it:
 
-| Type | Host  | Value         |
-| ---- | ----- | ------------- |
-| A    | `@`   | `76.76.21.21` |
-| A    | `www` | `76.76.21.21` |
+| Type | Host  | Value                                  | Priority |
+| ---- | ----- | -------------------------------------- | -------- |
+| A    | `www` | `76.76.21.21`                          |          |
+| A    | `@`   | `66.223.49.89`                         |          |
+| MX   | `@`   | `inbound-smtp.eu-west-1.amazonaws.com` | 10       |
+
+The apex A record points at Northwest's redirect service rather than Vercel,
+which is what issues the 301 to `www`. It works, but it means Vercel can no
+longer validate the apex, so the apex certificate it holds will not renew.
+Nothing breaks — Northwest terminates TLS on that hostname — but if you ever
+want Vercel to serve the apex directly, point it back at `76.76.21.21`.
+
+Only one MX record may exist. Mail and WhatsApp are documented in
+[docs/EMAIL_AND_WHATSAPP.md](docs/EMAIL_AND_WHATSAPP.md), including why two
+equal-priority MX records were losing half of all inbound mail, and the two
+DMARC records that cancel each other out.
 
 A `CNAME` on `www` pointing at `cname.vercel-dns.com.` is the more usual
 choice, and Northwest accepts it — with the trailing dot, as it rejects any
@@ -200,9 +212,18 @@ after it was saved `ns2` served it while `ns1` still answered `NXDOMAIN` for
 failed. The A record that replaced it was consistent on both nameservers
 within two minutes. Prefer the A records.
 
-Three environment variables must exist in Vercel for every environment —
+Three `VITE_` variables must exist in Vercel for every environment —
 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SITE_NAME`. Vite inlines
-them at build time, so changing one needs a redeploy, not a restart.
+them at build time, so changing one needs a redeploy, not a restart. The
+serverless functions need several more; `.env.example` is the full list.
+
+`api/` holds three functions and `server/` holds the modules they share.
+Shared code cannot live under `api/`: Vercel transpiles rather than bundles
+these files, and because `package.json` sets `"type": "module"`, Node's ESM
+resolver requires the extension — every relative import between them ends in
+`.js` even though the files are `.ts`. Dropping it produces
+`FUNCTION_INVOCATION_FAILED` at cold start with nothing in the build log.
+`npm run typecheck` covers both trees.
 
 Supabase has to be told the domain too, or password recovery breaks on it:
 the reset link is built from `window.location.origin`, and GoTrue refuses a

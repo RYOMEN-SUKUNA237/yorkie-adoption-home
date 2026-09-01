@@ -9,8 +9,8 @@
  * `resend._domainkey`, Return-Path under `send.`), so it is the only path.
  */
 
-import { db, optional, required } from "./server";
-import { renderEmail, renderEmailText, type EmailDocument } from "./branding";
+import { db, optional, required } from "./server.js";
+import { renderEmail, renderEmailText, type EmailDocument } from "./branding.js";
 
 export interface SendResult {
   id: string | null;

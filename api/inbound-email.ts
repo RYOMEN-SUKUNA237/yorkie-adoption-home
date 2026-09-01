@@ -14,15 +14,16 @@
  *  3. Its staff alert went out over Gmail SMTP using a password committed to
  *     the repository.
  *
- * This handler uses the Web signature rather than `(req, res)` because Svix
- * signs the exact request bytes, and `await request.text()` is the only way
- * to see them — a re-serialised `req.body` will not verify.
+ * This one runs on the edge runtime, which hands the handler a `Request`.
+ * Svix signs the exact request bytes, and `await request.text()` is the only
+ * way to see them: the Node runtime parses the body before the handler is
+ * called, and a re-serialised `req.body` will not verify.
  */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
-import { adminNotifyEmails, db, optional, siteContact, siteOrigin } from "./_lib/server";
-import { sendMail, archive } from "./_lib/mailer";
-import type { EmailDocument } from "./_lib/branding";
+export const config = { runtime: "edge" };
+import { adminNotifyEmails, db, optional, siteContact, siteOrigin } from "../server/server.js";
+import { sendMail, archive } from "../server/mailer.js";
+import type { EmailDocument } from "../server/branding.js";
 
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), {
@@ -31,18 +32,46 @@ const json = (body: unknown, status = 200): Response =>
   });
 
 /**
+ * Web Crypto takes a BufferSource. TypeScript now models `Uint8Array` over
+ * `ArrayBufferLike`, which includes `SharedArrayBuffer` and so does not
+ * satisfy that, hence the copy into a plain `ArrayBuffer`.
+ */
+const toBuffer = (bytes: Uint8Array): ArrayBuffer => {
+  const out = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(out).set(bytes);
+  return out;
+};
+
+const b64ToBytes = (value: string): Uint8Array =>
+  Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+
+/** Constant time, so a wrong signature leaks nothing through timing. */
+function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+/**
  * Svix signature check, as Resend sends it.
  *
+ * Web Crypto rather than `node:crypto` because this function runs on the edge
+ * runtime — which is the whole reason the raw body is available to sign over.
+ *
  * Skipped with a warning when RESEND_WEBHOOK_SECRET is unset, so an existing
- * deployment keeps working while the secret is being copied over — but an
+ * deployment keeps working while the secret is being copied across. An
  * unverified endpoint is an open door, and the log line says so.
  */
-function verifySignature(headers: Headers, rawBody: string): { ok: boolean; reason?: string } {
+async function verifySignature(
+  headers: Headers,
+  rawBody: string
+): Promise<{ ok: boolean; reason?: string }> {
   const secret = optional("RESEND_WEBHOOK_SECRET");
   if (!secret) {
     console.warn(
-      "[inbound-email] RESEND_WEBHOOK_SECRET is not set — accepting the request WITHOUT " +
-        "verifying its signature. Anyone who knows this URL can post to it."
+      "[inbound-email] RESEND_WEBHOOK_SECRET is not set — accepting this request WITHOUT " +
+        "verifying its signature. Anyone who knows the URL can post to it."
     );
     return { ok: true, reason: "unverified" };
   }
@@ -53,18 +82,28 @@ function verifySignature(headers: Headers, rawBody: string): { ok: boolean; reas
 
   if (!id || !timestamp || !signatures) return { ok: false, reason: "missing svix headers" };
 
+  // Replay window. Svix uses five minutes.
   const age = Math.abs(Date.now() / 1000 - Number(timestamp));
   if (!Number.isFinite(age) || age > 300) return { ok: false, reason: "timestamp outside tolerance" };
 
-  const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
-  const expected = createHmac("sha256", key).update(`${id}.${timestamp}.${rawBody}`).digest();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    toBuffer(b64ToBytes(secret.replace(/^whsec_/, ""))),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signed = toBuffer(new TextEncoder().encode(`${id}.${timestamp}.${rawBody}`));
+  const expected = new Uint8Array(await crypto.subtle.sign("HMAC", key, signed));
 
   for (const entry of signatures.split(" ")) {
     const [version, value] = entry.split(",");
     if (version !== "v1" || !value) continue;
-    const candidate = Buffer.from(value, "base64");
-    if (candidate.length === expected.length && timingSafeEqual(candidate, expected)) {
-      return { ok: true };
+    try {
+      if (equalBytes(b64ToBytes(value), expected)) return { ok: true };
+    } catch {
+      // A malformed signature is simply not a match.
     }
   }
 
@@ -149,7 +188,7 @@ export default async function handler(request: Request): Promise<Response> {
   try {
     const rawBody = await request.text();
 
-    const verified = verifySignature(request.headers, rawBody);
+    const verified = await verifySignature(request.headers, rawBody);
     if (!verified.ok) {
       console.warn("[inbound-email] rejected:", verified.reason);
       return json({ error: "Invalid signature" }, 401);

@@ -20,7 +20,7 @@
  * sends the template instead of plain text, which works at any time.
  */
 
-import { optional } from "./server";
+import { optional } from "./server.js";
 
 export type WhatsAppProvider = "meta" | "twilio" | "none";
 

@@ -1,7 +1,4 @@
 {
-  // The serverless functions run on Node, not in the browser, and were left
-  // out of the root tsconfig entirely — so nothing type-checked them until
-  // Vercel built them. This config brings them under `npm run typecheck`.
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],
@@ -20,5 +17,5 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["**/*.ts"]
+  "include": ["api/**/*.ts", "server/**/*.ts"]
 }

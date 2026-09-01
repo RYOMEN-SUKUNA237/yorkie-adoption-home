@@ -15,9 +15,9 @@ import {
   siteOrigin,
   type ApiRequest,
   type ApiResponse,
-} from "./_lib/server";
-import { sendMail } from "./_lib/mailer";
-import type { EmailDocument } from "./_lib/branding";
+} from "../server/server.js";
+import { sendMail } from "../server/mailer.js";
+import type { EmailDocument } from "../server/branding.js";
 
 type Payload = Record<string, any>;
 

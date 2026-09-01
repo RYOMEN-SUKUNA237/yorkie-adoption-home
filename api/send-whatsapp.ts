@@ -17,8 +17,8 @@ import {
   fail,
   type ApiRequest,
   type ApiResponse,
-} from "./_lib/server";
-import { configuredProvider, sendWhatsApp } from "./_lib/whatsapp";
+} from "../server/server.js";
+import { configuredProvider, sendWhatsApp } from "../server/whatsapp.js";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (applyCors(req, res, "POST, GET, OPTIONS")) return;

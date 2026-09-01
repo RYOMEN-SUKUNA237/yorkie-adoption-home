@@ -6,7 +6,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p api/tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
     "seed": "node scripts/generate-seed.mjs",
     "preview": "vite preview",
     "db:migrate": "node scripts/migrate.mjs",
