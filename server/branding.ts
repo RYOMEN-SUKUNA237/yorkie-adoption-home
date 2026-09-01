@@ -97,7 +97,7 @@ function renderBlock(block: EmailBlock): string {
           const top = index === 0 ? "0" : "11px";
           return `
             <tr>
-              <td style="padding:${top} 16px 11px 0;border-top:${border};font-family:${brand.sans};font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:${brand.inkSoft};white-space:nowrap;vertical-align:top;">${esc(label)}</td>
+              <td width="1" style="padding:${top} 22px 11px 0;border-top:${border};font-family:${brand.sans};font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:${brand.inkSoft};white-space:nowrap;vertical-align:top;">${esc(label)}</td>
               <td style="padding:${top} 0 11px 0;border-top:${border};font-family:${brand.sans};font-size:15px;line-height:1.5;color:${brand.ink};vertical-align:top;">${escMultiline(value)}</td>
             </tr>`;
         })

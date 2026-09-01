@@ -565,14 +565,14 @@ function ComposeEmailModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-600 text-xs p-3 rounded-md">
+          <div className="bg-destructive/10 border border-destructive/30 text-destructive text-xs p-3 rounded-md">
             {error}
           </div>
         )}
 
         {success ? (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-sm p-4 rounded-md text-center font-medium">
-            ✓ Email successfully sent to {toEmail}!
+          <div className="bg-accent/10 border border-accent/30 text-accent text-sm p-4 rounded-md text-center">
+            Sent to {toEmail}.
           </div>
         ) : (
           <div className="space-y-3">

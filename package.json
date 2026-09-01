@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
     "seed": "node scripts/generate-seed.mjs",
     "preview": "vite preview",
+    "preview:emails": "esbuild scripts/preview-emails.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/preview-emails.mjs && node node_modules/.cache/preview-emails.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "db:reset": "node scripts/migrate.mjs --seed",
     "db:verify": "node scripts/verify-db.mjs",

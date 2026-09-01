@@ -14,3 +14,4 @@ supabase/.branches
 .env*
 # The template documents required configuration and holds no secrets.
 !.env.example
+.email-preview
