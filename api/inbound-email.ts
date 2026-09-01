@@ -291,6 +291,16 @@ export default async function handler(request: Request): Promise<Response> {
     const from = splitAddress(data.from);
     const subject = String(data.subject ?? "").trim() || "(no subject)";
 
+    // Mail from our own sending address is either a deliverability test or
+    // the start of a loop: an auto-responder on the far end could otherwise
+    // bounce our staff alert back and forth indefinitely. Never file it, and
+    // never alert on it.
+    const ownAddress = (optional("FROM_EMAIL") ?? "support@yorkieadoptionhome.com").toLowerCase();
+    if (from.email.toLowerCase() === ownAddress) {
+      console.log(`[inbound-email] ignoring self-addressed mail: ${subject}`);
+      return json({ success: true, inbound: false, selfAddressed: true });
+    }
+
     // The webhook may or may not include a body depending on the event
     // version, so take whatever is there and fill the gap from the API.
     let html = String(data.html ?? "");

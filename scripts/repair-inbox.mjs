@@ -24,6 +24,10 @@ import pg from "pg";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const apply = process.argv.includes("--apply");
+// --show <text> prints the stored body of matching rows, which is the only
+// way to confirm the body actually arrived rather than merely a row.
+const showIndex = process.argv.indexOf("--show");
+const show = showIndex === -1 ? null : process.argv[showIndex + 1];
 
 function loadEnvFile(file) {
   if (!existsSync(file)) return {};
@@ -108,6 +112,35 @@ try {
      order by created_at desc
   `);
 
+  if (show) {
+    const { rows } = await client.query(
+      `select from_email, from_name, to_email, subject, status, provider_id,
+              body_text, coalesce(length(body_html), 0) as html_len, created_at
+         from public.emails
+        where direction = 'incoming'
+          and (subject ilike '%' || $1 || '%' or from_email ilike '%' || $1 || '%')
+        order by created_at desc`,
+      [show]
+    );
+    console.log(`
+${bold(`Rows matching "${show}"`)} (${rows.length})`);
+    for (const r of rows) {
+      console.log(`
+  from       : ${r.from_name ? r.from_name + " <" + r.from_email + ">" : r.from_email}`);
+      console.log(`  to         : ${r.to_email}`);
+      console.log(`  subject    : ${r.subject}`);
+      console.log(`  status     : ${r.status}   provider_id: ${r.provider_id ?? "(none)"}`);
+      console.log(`  html bytes : ${r.html_len}`);
+      console.log(`  text body  :`);
+      for (const line of String(r.body_text ?? "(empty)").split(String.fromCharCode(10)).slice(0, 14)) {
+        console.log(`    ${dim("|")} ${line}`);
+      }
+    }
+    console.log("");
+    await client.end();
+    throw { __reportOnly: true };
+  }
+
   const phantoms = incoming.filter(isPhantom);
   const genuine = incoming.filter((r) => !isPhantom(r));
 
@@ -181,6 +214,13 @@ try {
   let inserted = 0;
 
   for (const summary of received) {
+    // Self-addressed mail is a test of the pipeline, not client
+    // correspondence; backfilling it would undo the deletion above.
+    if (String(summary.from ?? "").toLowerCase().includes(OWN_DOMAIN)) {
+      console.log(`  skipped  self-addressed  ${String(summary.subject).slice(0, 40)}`);
+      continue;
+    }
+
     const full = await resend(`emails/receiving/${summary.id}`);
     if (!full) continue;
 

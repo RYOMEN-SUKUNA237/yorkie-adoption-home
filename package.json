@@ -14,7 +14,8 @@
     "db:reset": "node scripts/migrate.mjs --seed",
     "db:verify": "node scripts/verify-db.mjs",
     "db:check": "node scripts/check-client.mjs",
-    "db:e2e": "node scripts/check-admin.mjs"
+    "db:e2e": "node scripts/check-admin.mjs",
+    "db:repair-inbox": "node scripts/repair-inbox.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
