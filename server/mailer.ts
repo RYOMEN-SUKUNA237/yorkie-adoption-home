@@ -99,32 +99,47 @@ export interface ArchiveEntry {
   provider_id?: string | null;
 }
 
-/**
- * Archiving is best-effort. A failed insert must never turn a delivered
- * email into a 500 for the caller.
- */
-export async function archive(entry: ArchiveEntry): Promise<string | null> {
-  try {
-    const { data, error } = await db()
-      .from("emails")
-      .insert({
-        direction: entry.direction,
-        from_email: entry.from_email,
-        from_name: entry.from_name ?? null,
-        to_email: entry.to_email,
-        subject: entry.subject,
-        body_text: entry.body_text ?? null,
-        body_html: entry.body_html ?? null,
-        status: entry.status ?? "sent",
-        provider_id: entry.provider_id ?? null,
-      })
-      .select("id")
-      .single();
+export type ArchiveOutcome = "stored" | "duplicate" | "failed";
 
-    if (error) throw error;
-    return (data as { id: string } | null)?.id ?? null;
+/**
+ * Archiving is best-effort: a failed insert must never turn a delivered email
+ * into a 500 for the caller.
+ *
+ * Deliberately no `.select()` on the insert. The functions write with the
+ * publishable key, and migration 0011 leaves that key INSERT-only so the
+ * client email archive cannot be read out of the browser bundle. Asking for
+ * the inserted row back needs SELECT as well, so `.insert().select()` was
+ * rejected with 42501 — and because this function swallows its own errors,
+ * every received email was dropped in silence. supabase-js sends
+ * `Prefer: return=minimal` when no `.select()` follows, which INSERT alone
+ * satisfies.
+ *
+ * Deduplication rides on the unique index over `provider_id` rather than a
+ * lookup, for the same reason: a conflict is a message we already hold.
+ */
+export async function archive(entry: ArchiveEntry): Promise<ArchiveOutcome> {
+  try {
+    const { error } = await db().from("emails").insert({
+      direction: entry.direction,
+      from_email: entry.from_email,
+      from_name: entry.from_name ?? null,
+      to_email: entry.to_email,
+      subject: entry.subject,
+      body_text: entry.body_text ?? null,
+      body_html: entry.body_html ?? null,
+      status: entry.status ?? "sent",
+      provider_id: entry.provider_id ?? null,
+    });
+
+    if (error) {
+      // 23505: unique_violation on emails_provider_id_key — a webhook retry.
+      if (error.code === "23505") return "duplicate";
+      throw error;
+    }
+
+    return "stored";
   } catch (err) {
     console.warn("[mailer] could not archive email:", err);
-    return null;
+    return "failed";
   }
 }

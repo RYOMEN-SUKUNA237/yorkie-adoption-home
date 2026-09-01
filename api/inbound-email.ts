@@ -136,6 +136,80 @@ const stripHtml = (html: string): string =>
     .trim();
 
 /**
+ * The `email.received` webhook carries metadata only — `from`, `to`,
+ * `subject`, `message_id`, `attachments` — and **no body**. The body has to be
+ * fetched separately from `GET /emails/receiving/{id}`, which returns `text`,
+ * `html`, `raw` and `headers`.
+ *
+ * Missing this is why received mail showed up in the Email Center with the
+ * right sender and subject and nothing to read.
+ */
+async function fetchReceivedBody(
+  id: string
+): Promise<{ text: string; html: string; to?: string; from?: string } | null> {
+  const apiKey = optional("RESEND_API_KEY");
+  if (!apiKey) {
+    console.warn("[inbound-email] no RESEND_API_KEY, cannot fetch the message body");
+    return null;
+  }
+
+  try {
+    const res = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    if (!res.ok) {
+      console.warn(`[inbound-email] body fetch for ${id} returned ${res.status}`);
+      return null;
+    }
+
+    const payload = (await res.json()) as {
+      text?: string;
+      html?: string;
+      to?: string[] | string;
+      from?: string;
+    };
+
+    return {
+      text: String(payload.text ?? ""),
+      html: String(payload.html ?? ""),
+      to: Array.isArray(payload.to) ? payload.to.join(", ") : payload.to,
+      from: payload.from,
+    };
+  } catch (err) {
+    console.warn(`[inbound-email] body fetch for ${id} failed:`, err);
+    return null;
+  }
+}
+
+/**
+ * Everything from the first quoted-reply marker onwards.
+ *
+ * A Gmail reply carries the entire previous thread, so an alert that quoted
+ * the raw body would be mostly our own last message. The full text is still
+ * stored — this only shortens what the alert shows.
+ */
+function withoutQuotedHistory(text: string): string {
+  const markers = [
+    /^On .*wrote:\s*$/m,
+    /^-{2,}\s*Original Message\s*-{2,}/im,
+    /^_{10,}/m,
+    /^From: .*$/m,
+    /^Sent from /m,
+  ];
+
+  let cut = text.length;
+  for (const marker of markers) {
+    const found = text.search(marker);
+    if (found > 0) cut = Math.min(cut, found);
+  }
+
+  const trimmed = text.slice(0, cut).replace(/\n{3,}/g, "\n\n").trim();
+  // A reply that is nothing but quoted history is better shown whole.
+  return trimmed || text.trim();
+}
+
+/**
  * Delivery events for mail we sent. The row is already in `public.emails`
  * from the send, so this only moves its status along.
  */
@@ -214,26 +288,27 @@ export default async function handler(request: Request): Promise<Response> {
 
     const providerId: string | null = data.email_id ?? data.id ?? null;
 
-    // Resend retries on any non-2xx, so the same message can arrive twice.
-    if (providerId) {
-      const { data: existing } = await db()
-        .from("emails")
-        .select("id")
-        .eq("provider_id", providerId)
-        .maybeSingle();
+    const from = splitAddress(data.from);
+    const subject = String(data.subject ?? "").trim() || "(no subject)";
 
-      if (existing) {
-        return json({ success: true, deduplicated: true, id: (existing as { id: string }).id });
+    // The webhook may or may not include a body depending on the event
+    // version, so take whatever is there and fill the gap from the API.
+    let html = String(data.html ?? "");
+    let text = String(data.text ?? "");
+    let to = Array.isArray(data.to) ? data.to.join(", ") : String(data.to ?? "");
+
+    if (!text.trim() && !html.trim() && providerId) {
+      const fetched = await fetchReceivedBody(providerId);
+      if (fetched) {
+        html = fetched.html || html;
+        text = fetched.text || text;
+        if (!to && fetched.to) to = fetched.to;
       }
     }
 
-    const from = splitAddress(data.from);
-    const to = Array.isArray(data.to) ? data.to.join(", ") : String(data.to ?? "");
-    const subject = String(data.subject ?? "").trim() || "(no subject)";
-    const html = String(data.html ?? "");
-    const text = String(data.text ?? "").trim() || (html ? stripHtml(html) : "");
+    if (!text.trim() && html.trim()) text = stripHtml(html);
 
-    const storedId = await archive({
+    const outcome = await archive({
       direction: "incoming",
       from_email: from.email || "unknown",
       from_name: from.name,
@@ -245,10 +320,16 @@ export default async function handler(request: Request): Promise<Response> {
       provider_id: providerId,
     });
 
+    // Resend retries on any non-2xx, so the same message can arrive twice.
+    // The unique index over provider_id is what catches it.
+    if (outcome === "duplicate") {
+      return json({ success: true, deduplicated: true });
+    }
+
     // Tell the team, in the same voice as everything else we send.
     const contact = await siteContact();
     const origin = siteOrigin();
-    const preview = text.slice(0, 1500);
+    const preview = withoutQuotedHistory(text).slice(0, 1500);
 
     const document: EmailDocument = {
       siteName: contact.siteName,
@@ -288,7 +369,13 @@ export default async function handler(request: Request): Promise<Response> {
       console.warn("[inbound-email] stored the email but could not alert staff:", alertErr);
     }
 
-    return json({ success: true, inbound: true, id: storedId, verified: verified.reason !== "unverified" });
+    return json({
+      success: true,
+      inbound: true,
+      stored: outcome,
+      hasBody: Boolean(text.trim() || html.trim()),
+      verified: verified.reason !== "unverified",
+    });
   } catch (err) {
     console.error("[inbound-email]", err);
     return json({ error: err instanceof Error ? err.message : "Failed to process inbound email" }, 500);
