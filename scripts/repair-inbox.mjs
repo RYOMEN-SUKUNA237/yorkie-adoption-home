@@ -187,6 +187,38 @@ ${bold(`Rows matching "${show}"`)} (${rows.length})`);
   const missing = received.filter((m) => !storedIds.has(m.id));
   console.log(`  received but never stored                       : ${missing.length}`);
 
+  // -----------------------------------------------------------------
+  // WhatsApp dispatch log
+  // -----------------------------------------------------------------
+  const { rows: dispatches } = await client.query(`
+    select status, provider, count(*) as n
+      from public.whatsapp_logs
+     group by status, provider
+     order by n desc
+  `);
+
+  console.log(`\n${bold("WhatsApp dispatch log")}\n`);
+  if (dispatches.length === 0) {
+    console.log("  (empty)");
+  } else {
+    for (const d of dispatches) {
+      console.log(
+        `  ${String(d.n).padStart(3)}x  ${String(d.status).padEnd(10)}` +
+          `via ${d.provider ?? "(unrecorded)"}`
+      );
+    }
+  }
+
+  const { rows: probes } = await client.query(`
+    select id, recipient_phone, recipient_name
+      from public.whatsapp_logs
+     where recipient_name ilike '%probe%'
+        or recipient_phone in ('10000000000', '0000000000')
+  `);
+  if (probes.length) {
+    console.log(`\n  ${probes.length} probe row(s) from privilege testing, removable`);
+  }
+
   if (!apply) {
     console.log(`\n${dim("Report only. Re-run with --apply to delete the phantom rows and")}`);
     console.log(`${dim("backfill the genuine messages from Resend.")}\n`);
@@ -201,6 +233,14 @@ ${bold(`Rows matching "${show}"`)} (${rows.length})`);
   // -----------------------------------------------------------------
   console.log(`\n${bold("Applying")}\n`);
   await client.query("begin");
+
+  if (probes.length) {
+    const { rowCount } = await client.query(
+      `delete from public.whatsapp_logs where id = any($1::uuid[])`,
+      [probes.map((r) => r.id)]
+    );
+    console.log(`  deleted ${rowCount} WhatsApp probe row(s)`);
+  }
 
   if (phantoms.length) {
     const { rowCount } = await client.query(
