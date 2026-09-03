@@ -1,3 +1,5 @@
+import { vaccineName } from "./vaccines.ts";
+
 export type PuppyStatus = "available" | "pending" | "placed";
 
 export interface HealthTest {
@@ -61,21 +63,24 @@ const daysAhead = (n: number) => iso(new Date(Date.now() + n * DAY));
  * how the paperwork looks.
  */
 function standardVaccinations(ageWeeks: number): Vaccination[] {
+  // Labels come from the catalogue rather than being retyped here, so the
+  // sample content, the seed and the admin picker cannot drift apart and
+  // leave records that look like separate vaccines.
   const records: Vaccination[] = [];
   const ageInDays = ageWeeks * 7;
 
   if (ageWeeks >= 8) {
     records.push(
-      { name: "DHPPi — first (8 weeks)", date: daysAgo(ageInDays - 56), done: true },
-      { name: "Kennel Cough — intranasal", date: daysAgo(ageInDays - 56), done: true }
+      { name: vaccineName("dhppi-1"), date: daysAgo(ageInDays - 56), done: true },
+      { name: vaccineName("kennel-cough-intranasal"), date: daysAgo(ageInDays - 56), done: true }
     );
   }
 
   if (ageWeeks >= 12) {
-    records.push({ name: "DHPPi — second (12 weeks)", date: daysAgo(ageInDays - 84), done: true });
+    records.push({ name: vaccineName("dhppi-2"), date: daysAgo(ageInDays - 84), done: true });
   } else if (ageWeeks >= 8) {
     records.push({
-      name: "DHPPi — second (12 weeks)",
+      name: vaccineName("dhppi-2"),
       date: daysAhead(84 - ageInDays),
       due: daysAhead(84 - ageInDays),
       done: false,
@@ -83,7 +88,7 @@ function standardVaccinations(ageWeeks: number): Vaccination[] {
   }
 
   if (ageWeeks >= 16) {
-    records.push({ name: "Rabies", date: daysAgo(ageInDays - 112), done: true });
+    records.push({ name: vaccineName("rabies"), date: daysAgo(ageInDays - 112), done: true });
   }
 
   return records;

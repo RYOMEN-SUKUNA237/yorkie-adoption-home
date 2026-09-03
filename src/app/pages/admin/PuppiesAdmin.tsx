@@ -6,6 +6,9 @@ import {
   updatePuppy, upsertParent, type DewormingInput, type PuppyInput, type VaccinationInput,
 } from "../../../services/puppies";
 import { uploadImage } from "../../../services/misc";
+import {
+  findVaccine, suggestedDue, VACCINE_GROUPS, vaccinesByGroup, type VaccineOption,
+} from "../../../data/vaccines";
 import { ageInWeeks, slugify, type Puppy } from "../../../lib/models";
 import type { ParentRow, PuppyStatus } from "../../../lib/database.types";
 import { formatDate } from "../../../lib/format";
@@ -162,6 +165,16 @@ export default function PuppiesAdmin() {
 // Editor
 // =====================================================================
 
+/**
+ * A vaccination row while it is being edited.
+ *
+ * `custom` is presentation state only — it decides whether the row shows the
+ * catalogue picker or a free-text box — and is stripped before the row is
+ * written, because `replaceHealthRecords` spreads the object straight into
+ * the insert and PostgREST rejects a column it does not know.
+ */
+type VaccinationRow = VaccinationInput & { custom?: boolean };
+
 interface EditorState {
   slug: string;
   name: string;
@@ -175,7 +188,7 @@ interface EditorState {
   isPublished: boolean;
   sireId: string;
   damId: string;
-  vaccinations: VaccinationInput[];
+  vaccinations: VaccinationRow[];
   dewormings: DewormingInput[];
 }
 
@@ -211,6 +224,10 @@ function PuppyEditor({
         administered: v.date || null,
         due: v.due ?? null,
         done: v.done,
+        // A name the catalogue does not recognise is somebody's own wording
+        // and must survive editing. A blank one is the twelve-row mess in
+        // production: leave it on the picker so it reads as "choose one".
+        custom: v.name.trim() !== "" && !findVaccine(v.name),
       })) ?? [],
     dewormings:
       puppy?.dewormings.map((d) => ({ product: d.product, administered: d.date })) ?? [],
@@ -263,6 +280,13 @@ function PuppyEditor({
       return;
     }
 
+    // A nameless vaccination row is how twelve empty bullets ended up on the
+    // public puppy pages. Refuse rather than store another.
+    if (state.vaccinations.some((v) => !v.name.trim())) {
+      setError("Every vaccination needs a name — choose one from the list, or remove the row.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -286,7 +310,11 @@ function PuppyEditor({
       };
 
       const id = puppy ? (await updatePuppy(puppy.id, input), puppy.id) : await createPuppy(input);
-      await replaceHealthRecords(id, state.vaccinations, state.dewormings);
+      await replaceHealthRecords(
+        id,
+        state.vaccinations.map(({ custom: _custom, ...v }) => ({ ...v, name: v.name.trim() })),
+        state.dewormings
+      );
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save.");
@@ -513,97 +541,184 @@ function PuppyEditor({
 
           {/* Health records */}
           <section className="border-t border-border pt-5">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
               <h3 className="text-sm font-semibold text-foreground">Vaccinations</h3>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() =>
-                  set("vaccinations", [
-                    ...state.vaccinations,
-                    { name: "", administered: null, due: null, done: false },
-                  ])
-                }
-              >
-                <Plus size={12} /> Add
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select
+                  aria-label="Add a vaccination from the schedule"
+                  value=""
+                  className="w-56"
+                  onChange={(e) => {
+                    const option = [...vaccinesByGroup("core"), ...vaccinesByGroup("lifestyle")]
+                      .find((v) => v.id === e.target.value);
+                    if (!option) return;
+                    set("vaccinations", [
+                      ...state.vaccinations,
+                      {
+                        name: option.name,
+                        administered: null,
+                        due: suggestedDue(option, state.dateOfBirth),
+                        done: false,
+                      },
+                    ]);
+                  }}
+                >
+                  <option value="">Add from schedule…</option>
+                  {VACCINE_GROUPS.map((group) => (
+                    <optgroup key={group.key} label={group.label}>
+                      {vaccinesByGroup(group.key).map((option) => (
+                        <option
+                          key={option.id}
+                          value={option.id}
+                          disabled={state.vaccinations.some((v) => v.name === option.name)}
+                        >
+                          {option.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </Select>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    set("vaccinations", [
+                      ...state.vaccinations,
+                      { name: "", administered: null, due: null, done: false, custom: true },
+                    ])
+                  }
+                >
+                  <Plus size={12} /> Custom
+                </Button>
+              </div>
             </div>
+
+            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+              The standard small-breed schedule. Your vet&rsquo;s protocol governs — every date
+              here is a suggestion you can overwrite.
+              {!state.dateOfBirth && " Set the date of birth and due dates fill themselves in."}
+            </p>
 
             {state.vaccinations.length === 0 && (
               <p className="text-sm text-muted-foreground mb-3">None recorded.</p>
             )}
 
             <ul className="flex flex-col gap-3">
-              {state.vaccinations.map((vaccination, i) => (
-                <li key={i} className="border border-border rounded-sm p-3 flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <TextInput
-                      value={vaccination.name}
-                      placeholder="DHPPi — first (8 weeks)"
-                      onChange={(e) =>
-                        set(
-                          "vaccinations",
-                          state.vaccinations.map((v, idx) =>
-                            idx === i ? { ...v, name: e.target.value } : v
-                          )
-                        )
-                      }
+              {state.vaccinations.map((vaccination, i) => {
+                const patch = (changes: Partial<VaccinationRow>) =>
+                  set(
+                    "vaccinations",
+                    state.vaccinations.map((v, idx) => (idx === i ? { ...v, ...changes } : v))
+                  );
+                const chosen = vaccination.custom ? undefined : findVaccine(vaccination.name);
+                const blank = !vaccination.name.trim();
+
+                return (
+                  <li
+                    key={i}
+                    className={`border rounded-sm p-3 flex flex-col gap-2 ${
+                      blank ? "border-primary/50 bg-primary/5" : "border-border"
+                    }`}
+                  >
+                    <div className="flex gap-2">
+                      {vaccination.custom ? (
+                        <TextInput
+                          value={vaccination.name}
+                          placeholder="Vaccine name"
+                          aria-label="Vaccine name"
+                          onChange={(e) => patch({ name: e.target.value })}
+                        />
+                      ) : (
+                        <Select
+                          aria-label="Vaccine"
+                          value={chosen?.id ?? ""}
+                          onChange={(e) => {
+                            if (e.target.value === "__custom") {
+                              patch({ custom: true, name: "" });
+                              return;
+                            }
+                            const option = [
+                              ...vaccinesByGroup("core"),
+                              ...vaccinesByGroup("lifestyle"),
+                            ].find((v) => v.id === e.target.value);
+                            if (!option) return;
+                            patch({
+                              name: option.name,
+                              // Only ever fill an empty date. A due date the
+                              // admin typed is a fact about this puppy and
+                              // outranks the schedule's guess.
+                              due: vaccination.due ?? suggestedDue(option, state.dateOfBirth),
+                            });
+                          }}
+                        >
+                          <option value="">Choose a vaccine…</option>
+                          {VACCINE_GROUPS.map((group) => (
+                            <optgroup key={group.key} label={group.label}>
+                              {vaccinesByGroup(group.key).map((option) => (
+                                <option
+                                  key={option.id}
+                                  value={option.id}
+                                  disabled={
+                                    option.id !== chosen?.id &&
+                                    state.vaccinations.some((v) => v.name === option.name)
+                                  }
+                                >
+                                  {option.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                          <option value="__custom">Something else…</option>
+                        </Select>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label="Remove vaccination"
+                        onClick={() =>
+                          set("vaccinations", state.vaccinations.filter((_, idx) => idx !== i))
+                        }
+                      >
+                        <Trash2 size={13} />
+                      </Button>
+                    </div>
+
+                    {chosen && (
+                      <p className="text-xs text-muted-foreground leading-relaxed -mt-0.5">
+                        {chosen.protects}
+                      </p>
+                    )}
+                    {blank && (
+                      <p className="text-xs text-primary leading-relaxed -mt-0.5">
+                        This row has no vaccine. Choose one, or remove it — it cannot be saved
+                        empty.
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field label="Given">
+                        <TextInput
+                          type="date"
+                          value={vaccination.administered ?? ""}
+                          onChange={(e) => patch({ administered: e.target.value || null })}
+                        />
+                      </Field>
+                      <Field label="Due">
+                        <TextInput
+                          type="date"
+                          value={vaccination.due ?? ""}
+                          onChange={(e) => patch({ due: e.target.value || null })}
+                        />
+                      </Field>
+                    </div>
+                    <Toggle
+                      checked={vaccination.done}
+                      onChange={(v) => patch({ done: v })}
+                      label="Completed"
                     />
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label="Remove vaccination"
-                      onClick={() =>
-                        set("vaccinations", state.vaccinations.filter((_, idx) => idx !== i))
-                      }
-                    >
-                      <Trash2 size={13} />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field label="Given">
-                      <TextInput
-                        type="date"
-                        value={vaccination.administered ?? ""}
-                        onChange={(e) =>
-                          set(
-                            "vaccinations",
-                            state.vaccinations.map((v, idx) =>
-                              idx === i ? { ...v, administered: e.target.value || null } : v
-                            )
-                          )
-                        }
-                      />
-                    </Field>
-                    <Field label="Due">
-                      <TextInput
-                        type="date"
-                        value={vaccination.due ?? ""}
-                        onChange={(e) =>
-                          set(
-                            "vaccinations",
-                            state.vaccinations.map((v, idx) =>
-                              idx === i ? { ...v, due: e.target.value || null } : v
-                            )
-                          )
-                        }
-                      />
-                    </Field>
-                  </div>
-                  <Toggle
-                    checked={vaccination.done}
-                    onChange={(v) =>
-                      set(
-                        "vaccinations",
-                        state.vaccinations.map((item, idx) =>
-                          idx === i ? { ...item, done: v } : item
-                        )
-                      )
-                    }
-                    label="Completed"
-                  />
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           </section>
 

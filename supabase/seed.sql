@@ -22,7 +22,7 @@ insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'sixpence', 'Sixpence', 'male'::puppy_sex, '2026-06-23'::date,
+  'sixpence', 'Sixpence', 'male'::puppy_sex, '2026-07-02'::date,
   'available'::puppy_status, array['bold', 'bright', 'vocal']::text[],
   'Sixpence has decided he is a much larger dog than he is, and nothing we have done has dissuaded him. He announces visitors, supervises the garden, and escorts anyone carrying food. Underneath the bravado he is affectionate and unusually quick — he had sit and wait inside a fortnight. He will suit someone who finds a big personality in a small dog funny rather than tiring, and who will teach him that not every noise requires comment.',
   array['https://images.unsplash.com/photo-1546527868-ccb7ee7dfa6a?w=900&h=1100&fit=crop&auto=format']::text[], 0,
@@ -37,21 +37,21 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'sixpence');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'sixpence'), 'DHPPi — first (8 weeks)', '2026-08-18'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'sixpence'), 'Kennel Cough — intranasal', '2026-08-18'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'sixpence'), 'DHPPi — second (12 weeks)', '2026-09-15'::date, '2026-09-15'::date, false, 2);
+  ((select id from public.puppies where slug = 'sixpence'), 'DHPPi — first (8 weeks)', '2026-08-27'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'sixpence'), 'Kennel Cough — intranasal', '2026-08-27'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'sixpence'), 'DHPPi — second (12 weeks)', '2026-09-24'::date, '2026-09-24'::date, false, 2);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'sixpence');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'sixpence'), 'Panacur 10% oral suspension', '2026-07-14'::date, 0),
-  ((select id from public.puppies where slug = 'sixpence'), 'Panacur 10% oral suspension', '2026-08-04'::date, 1),
-  ((select id from public.puppies where slug = 'sixpence'), 'Panacur 10% oral suspension', '2026-08-25'::date, 2);
+  ((select id from public.puppies where slug = 'sixpence'), 'Panacur 10% oral suspension', '2026-07-23'::date, 0),
+  ((select id from public.puppies where slug = 'sixpence'), 'Panacur 10% oral suspension', '2026-08-13'::date, 1),
+  ((select id from public.puppies where slug = 'sixpence'), 'Panacur 10% oral suspension', '2026-09-03'::date, 2);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'hazel', 'Hazel', 'female'::puppy_sex, '2026-06-23'::date,
+  'hazel', 'Hazel', 'female'::puppy_sex, '2026-07-02'::date,
   'available'::puppy_status, array['gentle', 'watchful', 'steady']::text[],
   'Hazel is the quiet one of her litter and the last to make up her mind about anything. She watches first, joins second, and once she has decided you are hers she is completely devoted. She is easier company than most Yorkies of this age — less noise, less fuss — but she does not like being left, and a household where someone is usually home would suit her far better than one that is empty all day.',
   array['https://images.unsplash.com/photo-1618760877592-0d80e8b7bd02?w=900&h=1100&fit=crop&auto=format']::text[], 1,
@@ -66,21 +66,21 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'hazel');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'hazel'), 'DHPPi — first (8 weeks)', '2026-08-18'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'hazel'), 'Kennel Cough — intranasal', '2026-08-18'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'hazel'), 'DHPPi — second (12 weeks)', '2026-09-15'::date, '2026-09-15'::date, false, 2);
+  ((select id from public.puppies where slug = 'hazel'), 'DHPPi — first (8 weeks)', '2026-08-27'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'hazel'), 'Kennel Cough — intranasal', '2026-08-27'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'hazel'), 'DHPPi — second (12 weeks)', '2026-09-24'::date, '2026-09-24'::date, false, 2);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'hazel');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'hazel'), 'Panacur 10% oral suspension', '2026-07-14'::date, 0),
-  ((select id from public.puppies where slug = 'hazel'), 'Panacur 10% oral suspension', '2026-08-04'::date, 1),
-  ((select id from public.puppies where slug = 'hazel'), 'Panacur 10% oral suspension', '2026-08-25'::date, 2);
+  ((select id from public.puppies where slug = 'hazel'), 'Panacur 10% oral suspension', '2026-07-23'::date, 0),
+  ((select id from public.puppies where slug = 'hazel'), 'Panacur 10% oral suspension', '2026-08-13'::date, 1),
+  ((select id from public.puppies where slug = 'hazel'), 'Panacur 10% oral suspension', '2026-09-03'::date, 2);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'tuppence', 'Tuppence', 'female'::puppy_sex, '2026-06-09'::date,
+  'tuppence', 'Tuppence', 'female'::puppy_sex, '2026-06-18'::date,
   'pending'::puppy_status, array['busy', 'clever', 'mischievous']::text[],
   'Tuppence is a project manager. She rearranges her toys, tests every gap in the fence, and has twice let herself out of a crate we were assured was secure. She is enormously clever and needs that mind occupied — training games, puzzle feeders, something to do. In the right home she will be a joy. In a home with no plan for her, she will make her own entertainment and it will be expensive.',
   array['https://images.unsplash.com/photo-1526440847959-4e38e7f00b04?w=900&h=1100&fit=crop&auto=format']::text[], 2,
@@ -95,21 +95,21 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'tuppence');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'tuppence'), 'DHPPi — first (8 weeks)', '2026-08-04'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'tuppence'), 'Kennel Cough — intranasal', '2026-08-04'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'tuppence'), 'DHPPi — second (12 weeks)', '2026-09-01'::date, '2026-09-01'::date, false, 2);
+  ((select id from public.puppies where slug = 'tuppence'), 'DHPPi — first (8 weeks)', '2026-08-13'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'tuppence'), 'Kennel Cough — intranasal', '2026-08-13'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'tuppence'), 'DHPPi — second (12 weeks)', '2026-09-10'::date, '2026-09-10'::date, false, 2);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'tuppence');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'tuppence'), 'Panacur 10% oral suspension', '2026-06-30'::date, 0),
-  ((select id from public.puppies where slug = 'tuppence'), 'Panacur 10% oral suspension', '2026-07-21'::date, 1),
-  ((select id from public.puppies where slug = 'tuppence'), 'Panacur 10% oral suspension', '2026-08-11'::date, 2);
+  ((select id from public.puppies where slug = 'tuppence'), 'Panacur 10% oral suspension', '2026-07-09'::date, 0),
+  ((select id from public.puppies where slug = 'tuppence'), 'Panacur 10% oral suspension', '2026-07-30'::date, 1),
+  ((select id from public.puppies where slug = 'tuppence'), 'Panacur 10% oral suspension', '2026-08-20'::date, 2);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'rowan', 'Rowan', 'male'::puppy_sex, '2026-06-30'::date,
+  'rowan', 'Rowan', 'male'::puppy_sex, '2026-07-09'::date,
   'available'::puppy_status, array['cuddly', 'easygoing', 'sociable']::text[],
   'Rowan is the softest puppy in this litter. He greets everyone, tolerates being carried about by children with visible patience, and falls asleep on whoever sits down first. He has none of the wariness the breed is sometimes known for. For a family who want a small dog that is genuinely easy with visitors and grandchildren, he is the obvious choice.',
   array['https://images.unsplash.com/photo-1695780963266-6225eff4f853?w=900&h=1100&fit=crop&auto=format']::text[], 3,
@@ -124,20 +124,20 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'rowan');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'rowan'), 'DHPPi — first (8 weeks)', '2026-08-25'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'rowan'), 'Kennel Cough — intranasal', '2026-08-25'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'rowan'), 'DHPPi — second (12 weeks)', '2026-09-22'::date, '2026-09-22'::date, false, 2);
+  ((select id from public.puppies where slug = 'rowan'), 'DHPPi — first (8 weeks)', '2026-09-03'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'rowan'), 'Kennel Cough — intranasal', '2026-09-03'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'rowan'), 'DHPPi — second (12 weeks)', '2026-10-01'::date, '2026-10-01'::date, false, 2);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'rowan');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'rowan'), 'Panacur 10% oral suspension', '2026-07-21'::date, 0),
-  ((select id from public.puppies where slug = 'rowan'), 'Panacur 10% oral suspension', '2026-08-11'::date, 1);
+  ((select id from public.puppies where slug = 'rowan'), 'Panacur 10% oral suspension', '2026-07-30'::date, 0),
+  ((select id from public.puppies where slug = 'rowan'), 'Panacur 10% oral suspension', '2026-08-20'::date, 1);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'bramble', 'Bramble', 'male'::puppy_sex, '2026-06-16'::date,
+  'bramble', 'Bramble', 'male'::puppy_sex, '2026-06-25'::date,
   'available'::puppy_status, array['spirited', 'loyal', 'tenacious']::text[],
   'Bramble is a terrier in the old sense — he will follow a scent to the end of the garden and dig where it stops. He is loyal to the point of shadowing, and he does not much care for other dogs he has not been introduced to properly. An owner who enjoys the terrier temperament rather than apologising for it will get a wonderful dog. He needs a secure garden; he will find any gap there is.',
   array['https://images.unsplash.com/photo-1611170078485-6c1c9ca31936?w=900&h=1100&fit=crop&auto=format']::text[], 4,
@@ -152,21 +152,21 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'bramble');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'bramble'), 'DHPPi — first (8 weeks)', '2026-08-11'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'bramble'), 'Kennel Cough — intranasal', '2026-08-11'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'bramble'), 'DHPPi — second (12 weeks)', '2026-09-08'::date, '2026-09-08'::date, false, 2);
+  ((select id from public.puppies where slug = 'bramble'), 'DHPPi — first (8 weeks)', '2026-08-20'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'bramble'), 'Kennel Cough — intranasal', '2026-08-20'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'bramble'), 'DHPPi — second (12 weeks)', '2026-09-17'::date, '2026-09-17'::date, false, 2);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'bramble');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'bramble'), 'Panacur 10% oral suspension', '2026-07-07'::date, 0),
-  ((select id from public.puppies where slug = 'bramble'), 'Panacur 10% oral suspension', '2026-07-28'::date, 1),
-  ((select id from public.puppies where slug = 'bramble'), 'Panacur 10% oral suspension', '2026-08-18'::date, 2);
+  ((select id from public.puppies where slug = 'bramble'), 'Panacur 10% oral suspension', '2026-07-16'::date, 0),
+  ((select id from public.puppies where slug = 'bramble'), 'Panacur 10% oral suspension', '2026-08-06'::date, 1),
+  ((select id from public.puppies where slug = 'bramble'), 'Panacur 10% oral suspension', '2026-08-27'::date, 2);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'penny', 'Penny', 'female'::puppy_sex, '2026-06-02'::date,
+  'penny', 'Penny', 'female'::puppy_sex, '2026-06-11'::date,
   'available'::puppy_status, array['poised', 'elegant', 'confident']::text[],
   'Penny carries herself beautifully and knows it. She stands for grooming without complaint, walks on a lead as though she invented it, and the steel-blue and tan is coming through nicely. She would do well in a show home, but she is not precious — she is equally happy muddy. Confident with strangers, unbothered by noise, and completely unafraid of larger dogs.',
   array['https://images.unsplash.com/photo-1689009480234-e67dc23b437a?w=900&h=1100&fit=crop&auto=format', 'https://images.unsplash.com/photo-1689009480504-6420452a7e8e?w=900&h=1100&fit=crop&auto=format']::text[], 5,
@@ -181,21 +181,21 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'penny');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'penny'), 'DHPPi — first (8 weeks)', '2026-07-28'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'penny'), 'Kennel Cough — intranasal', '2026-07-28'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'penny'), 'DHPPi — second (12 weeks)', '2026-08-25'::date, null, true, 2);
+  ((select id from public.puppies where slug = 'penny'), 'DHPPi — first (8 weeks)', '2026-08-06'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'penny'), 'Kennel Cough — intranasal', '2026-08-06'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'penny'), 'DHPPi — second (12 weeks)', '2026-09-03'::date, null, true, 2);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'penny');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'penny'), 'Panacur 10% oral suspension', '2026-06-23'::date, 0),
-  ((select id from public.puppies where slug = 'penny'), 'Panacur 10% oral suspension', '2026-07-14'::date, 1),
-  ((select id from public.puppies where slug = 'penny'), 'Panacur 10% oral suspension', '2026-08-04'::date, 2);
+  ((select id from public.puppies where slug = 'penny'), 'Panacur 10% oral suspension', '2026-07-02'::date, 0),
+  ((select id from public.puppies where slug = 'penny'), 'Panacur 10% oral suspension', '2026-07-23'::date, 1),
+  ((select id from public.puppies where slug = 'penny'), 'Panacur 10% oral suspension', '2026-08-13'::date, 2);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'otto', 'Otto', 'male'::puppy_sex, '2026-05-26'::date,
+  'otto', 'Otto', 'male'::puppy_sex, '2026-06-04'::date,
   'pending'::puppy_status, array['comic', 'affectionate', 'vocal']::text[],
   'Otto talks constantly — not barking exactly, a running commentary of grumbles and opinions. He is very funny and very affectionate, and he has no interest whatsoever in being quiet. We are being direct about this because it is the thing most likely to matter: he will not suit a flat with thin walls or a household that needs a silent dog. For everyone else he is enormous fun.',
   array['https://images.unsplash.com/photo-1731027683053-3a025de056c3?w=900&h=1100&fit=crop&auto=format']::text[], 6,
@@ -210,21 +210,21 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'otto');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'otto'), 'DHPPi — first (8 weeks)', '2026-07-21'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'otto'), 'Kennel Cough — intranasal', '2026-07-21'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'otto'), 'DHPPi — second (12 weeks)', '2026-08-18'::date, null, true, 2);
+  ((select id from public.puppies where slug = 'otto'), 'DHPPi — first (8 weeks)', '2026-07-30'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'otto'), 'Kennel Cough — intranasal', '2026-07-30'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'otto'), 'DHPPi — second (12 weeks)', '2026-08-27'::date, null, true, 2);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'otto');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'otto'), 'Panacur 10% oral suspension', '2026-06-16'::date, 0),
-  ((select id from public.puppies where slug = 'otto'), 'Panacur 10% oral suspension', '2026-07-07'::date, 1),
-  ((select id from public.puppies where slug = 'otto'), 'Panacur 10% oral suspension', '2026-07-28'::date, 2);
+  ((select id from public.puppies where slug = 'otto'), 'Panacur 10% oral suspension', '2026-06-25'::date, 0),
+  ((select id from public.puppies where slug = 'otto'), 'Panacur 10% oral suspension', '2026-07-16'::date, 1),
+  ((select id from public.puppies where slug = 'otto'), 'Panacur 10% oral suspension', '2026-08-06'::date, 2);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'willow', 'Willow', 'female'::puppy_sex, '2026-07-07'::date,
+  'willow', 'Willow', 'female'::puppy_sex, '2026-07-16'::date,
   'available'::puppy_status, array['delicate', 'sweet', 'new']::text[],
   'Willow is our smallest and will stay with her mother longer than the others. We do not let the little ones go early, and with a puppy this size we watch weight and blood sugar closely before she travels anywhere. She is sweet-natured and seeks out warmth and company. We list her now because families wanting a very young puppy usually need time to prepare.',
   array['https://images.unsplash.com/photo-1654101437386-9fdf9469c769?w=900&h=1100&fit=crop&auto=format']::text[], 7,
@@ -241,14 +241,14 @@ delete from public.puppy_vaccinations where puppy_id = (select id from public.pu
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'willow');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'willow'), 'Panacur 10% oral suspension', '2026-07-28'::date, 0),
-  ((select id from public.puppies where slug = 'willow'), 'Panacur 10% oral suspension', '2026-08-18'::date, 1);
+  ((select id from public.puppies where slug = 'willow'), 'Panacur 10% oral suspension', '2026-08-06'::date, 0),
+  ((select id from public.puppies where slug = 'willow'), 'Panacur 10% oral suspension', '2026-08-27'::date, 1);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'flint', 'Flint', 'male'::puppy_sex, '2026-05-12'::date,
+  'flint', 'Flint', 'male'::puppy_sex, '2026-05-21'::date,
   'available'::puppy_status, array['independent', 'calm', 'assured']::text[],
   'We held Flint back a few weeks to watch how his coat and temperament settled, and both have come along well. He is more self-contained than most of the breed — affectionate when he chooses, content alone in a room, unfussed by an ordinary working morning. If the separation anxiety Yorkies are prone to has put you off the breed, Flint is the one to ask about.',
   array['https://images.unsplash.com/photo-1612830549030-bfb4b58ccd5f?w=900&h=1100&fit=crop&auto=format']::text[], 8,
@@ -263,21 +263,21 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'flint');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'flint'), 'DHPPi — first (8 weeks)', '2026-07-07'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'flint'), 'Kennel Cough — intranasal', '2026-07-07'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'flint'), 'DHPPi — second (12 weeks)', '2026-08-04'::date, null, true, 2);
+  ((select id from public.puppies where slug = 'flint'), 'DHPPi — first (8 weeks)', '2026-07-16'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'flint'), 'Kennel Cough — intranasal', '2026-07-16'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'flint'), 'DHPPi — second (12 weeks)', '2026-08-13'::date, null, true, 2);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'flint');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'flint'), 'Panacur 10% oral suspension', '2026-06-02'::date, 0),
-  ((select id from public.puppies where slug = 'flint'), 'Panacur 10% oral suspension', '2026-06-23'::date, 1),
-  ((select id from public.puppies where slug = 'flint'), 'Panacur 10% oral suspension', '2026-07-14'::date, 2);
+  ((select id from public.puppies where slug = 'flint'), 'Panacur 10% oral suspension', '2026-06-11'::date, 0),
+  ((select id from public.puppies where slug = 'flint'), 'Panacur 10% oral suspension', '2026-07-02'::date, 1),
+  ((select id from public.puppies where slug = 'flint'), 'Panacur 10% oral suspension', '2026-07-23'::date, 2);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'marigold', 'Marigold', 'female'::puppy_sex, '2026-06-09'::date,
+  'marigold', 'Marigold', 'female'::puppy_sex, '2026-06-18'::date,
   'available'::puppy_status, array['playful', 'brave', 'affectionate']::text[],
   'Marigold plays until she falls over, sleeps hard, and starts again. She is brave with new things and recovers quickly when something startles her, which is a temperament we like very much in this breed. She is affectionate without being clingy. A busy household with children old enough to handle a small dog carefully would suit her perfectly.',
   array['https://images.unsplash.com/photo-1659946431902-2786bdd0b39d?w=900&h=1100&fit=crop&auto=format']::text[], 9,
@@ -292,21 +292,21 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'marigold');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'marigold'), 'DHPPi — first (8 weeks)', '2026-08-04'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'marigold'), 'Kennel Cough — intranasal', '2026-08-04'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'marigold'), 'DHPPi — second (12 weeks)', '2026-09-01'::date, '2026-09-01'::date, false, 2);
+  ((select id from public.puppies where slug = 'marigold'), 'DHPPi — first (8 weeks)', '2026-08-13'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'marigold'), 'Kennel Cough — intranasal', '2026-08-13'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'marigold'), 'DHPPi — second (12 weeks)', '2026-09-10'::date, '2026-09-10'::date, false, 2);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'marigold');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'marigold'), 'Panacur 10% oral suspension', '2026-06-30'::date, 0),
-  ((select id from public.puppies where slug = 'marigold'), 'Panacur 10% oral suspension', '2026-07-21'::date, 1),
-  ((select id from public.puppies where slug = 'marigold'), 'Panacur 10% oral suspension', '2026-08-11'::date, 2);
+  ((select id from public.puppies where slug = 'marigold'), 'Panacur 10% oral suspension', '2026-07-09'::date, 0),
+  ((select id from public.puppies where slug = 'marigold'), 'Panacur 10% oral suspension', '2026-07-30'::date, 1),
+  ((select id from public.puppies where slug = 'marigold'), 'Panacur 10% oral suspension', '2026-08-20'::date, 2);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'jasper', 'Jasper', 'male'::puppy_sex, '2026-05-19'::date,
+  'jasper', 'Jasper', 'male'::puppy_sex, '2026-05-28'::date,
   'pending'::puppy_status, array['devoted', 'quiet', 'sensitive']::text[],
   'Jasper is sensitive in the good sense — he reads a room accurately and adjusts. He is quiet for a Yorkie and forms an intense attachment to one person in particular. He would be miserable in a chaotic home and wonderful in a calm one, especially with someone often at home. He does not enjoy being talked over or picked up without warning.',
   array['https://images.unsplash.com/photo-1633291294388-3e73294ab65f?w=900&h=1100&fit=crop&auto=format']::text[], 10,
@@ -321,21 +321,21 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'jasper');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'jasper'), 'DHPPi — first (8 weeks)', '2026-07-14'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'jasper'), 'Kennel Cough — intranasal', '2026-07-14'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'jasper'), 'DHPPi — second (12 weeks)', '2026-08-11'::date, null, true, 2);
+  ((select id from public.puppies where slug = 'jasper'), 'DHPPi — first (8 weeks)', '2026-07-23'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'jasper'), 'Kennel Cough — intranasal', '2026-07-23'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'jasper'), 'DHPPi — second (12 weeks)', '2026-08-20'::date, null, true, 2);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'jasper');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'jasper'), 'Panacur 10% oral suspension', '2026-06-09'::date, 0),
-  ((select id from public.puppies where slug = 'jasper'), 'Panacur 10% oral suspension', '2026-06-30'::date, 1),
-  ((select id from public.puppies where slug = 'jasper'), 'Panacur 10% oral suspension', '2026-07-21'::date, 2);
+  ((select id from public.puppies where slug = 'jasper'), 'Panacur 10% oral suspension', '2026-06-18'::date, 0),
+  ((select id from public.puppies where slug = 'jasper'), 'Panacur 10% oral suspension', '2026-07-09'::date, 1),
+  ((select id from public.puppies where slug = 'jasper'), 'Panacur 10% oral suspension', '2026-07-30'::date, 2);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'nutmeg', 'Nutmeg', 'female'::puppy_sex, '2026-07-14'::date,
+  'nutmeg', 'Nutmeg', 'female'::puppy_sex, '2026-07-23'::date,
   'available'::puppy_status, array['tiny', 'curious', 'new']::text[],
   'Nutmeg is a few weeks from being ready and is not yet reserved. She is curious about everything and already climbing out of places she should not be able to reach. Too young to say much about her adult temperament, but she is confident with handling and eating well, which is what we look for at this stage.',
   array['https://images.unsplash.com/photo-1546527762-f0234da4e9c8?w=900&h=1100&fit=crop&auto=format']::text[], 11,
@@ -352,14 +352,14 @@ delete from public.puppy_vaccinations where puppy_id = (select id from public.pu
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'nutmeg');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'nutmeg'), 'Panacur 10% oral suspension', '2026-08-04'::date, 0),
-  ((select id from public.puppies where slug = 'nutmeg'), 'Panacur 10% oral suspension', '2026-08-25'::date, 1);
+  ((select id from public.puppies where slug = 'nutmeg'), 'Panacur 10% oral suspension', '2026-08-13'::date, 0),
+  ((select id from public.puppies where slug = 'nutmeg'), 'Panacur 10% oral suspension', '2026-09-03'::date, 1);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'barnaby', 'Barnaby', 'male'::puppy_sex, '2026-01-13'::date,
+  'barnaby', 'Barnaby', 'male'::puppy_sex, '2026-01-22'::date,
   'placed'::puppy_status, array['settled', 'affectionate', 'characterful']::text[],
   'Barnaby went to a couple in Edinburgh earlier this year. They send photographs regularly. He has, we are told, taken firm possession of the sunniest windowsill in the flat and defends it against all comers, including the postman, who is outside and cannot hear him.',
   array['https://images.unsplash.com/photo-1610389712622-73f621ff06bf?w=900&h=1100&fit=crop&auto=format']::text[], 12,
@@ -374,22 +374,22 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'barnaby');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'barnaby'), 'DHPPi — first (8 weeks)', '2026-03-10'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'barnaby'), 'Kennel Cough — intranasal', '2026-03-10'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'barnaby'), 'DHPPi — second (12 weeks)', '2026-04-07'::date, null, true, 2),
-  ((select id from public.puppies where slug = 'barnaby'), 'Rabies', '2026-05-05'::date, null, true, 3);
+  ((select id from public.puppies where slug = 'barnaby'), 'DHPPi — first (8 weeks)', '2026-03-19'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'barnaby'), 'Kennel Cough — intranasal', '2026-03-19'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'barnaby'), 'DHPPi — second (12 weeks)', '2026-04-16'::date, null, true, 2),
+  ((select id from public.puppies where slug = 'barnaby'), 'Rabies', '2026-05-14'::date, null, true, 3);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'barnaby');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'barnaby'), 'Panacur 10% oral suspension', '2026-02-03'::date, 0),
-  ((select id from public.puppies where slug = 'barnaby'), 'Panacur 10% oral suspension', '2026-02-24'::date, 1),
-  ((select id from public.puppies where slug = 'barnaby'), 'Panacur 10% oral suspension', '2026-03-17'::date, 2);
+  ((select id from public.puppies where slug = 'barnaby'), 'Panacur 10% oral suspension', '2026-02-12'::date, 0),
+  ((select id from public.puppies where slug = 'barnaby'), 'Panacur 10% oral suspension', '2026-03-05'::date, 1),
+  ((select id from public.puppies where slug = 'barnaby'), 'Panacur 10% oral suspension', '2026-03-26'::date, 2);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'clover', 'Clover', 'female'::puppy_sex, '2025-12-02'::date,
+  'clover', 'Clover', 'female'::puppy_sex, '2025-12-11'::date,
   'placed'::puppy_status, array['bright', 'adaptable', 'loving']::text[],
   'Clover found her family in Manchester and settled in immediately, including with the resident cat, who reportedly outranks her and is not challenged on it.',
   array['https://images.unsplash.com/photo-1574760112346-8443c3773437?w=900&h=1100&fit=crop&auto=format']::text[], 13,
@@ -404,22 +404,22 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'clover');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'clover'), 'DHPPi — first (8 weeks)', '2026-01-27'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'clover'), 'Kennel Cough — intranasal', '2026-01-27'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'clover'), 'DHPPi — second (12 weeks)', '2026-02-24'::date, null, true, 2),
-  ((select id from public.puppies where slug = 'clover'), 'Rabies', '2026-03-24'::date, null, true, 3);
+  ((select id from public.puppies where slug = 'clover'), 'DHPPi — first (8 weeks)', '2026-02-05'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'clover'), 'Kennel Cough — intranasal', '2026-02-05'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'clover'), 'DHPPi — second (12 weeks)', '2026-03-05'::date, null, true, 2),
+  ((select id from public.puppies where slug = 'clover'), 'Rabies', '2026-04-02'::date, null, true, 3);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'clover');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'clover'), 'Panacur 10% oral suspension', '2025-12-23'::date, 0),
-  ((select id from public.puppies where slug = 'clover'), 'Panacur 10% oral suspension', '2026-01-13'::date, 1),
-  ((select id from public.puppies where slug = 'clover'), 'Panacur 10% oral suspension', '2026-02-03'::date, 2);
+  ((select id from public.puppies where slug = 'clover'), 'Panacur 10% oral suspension', '2026-01-01'::date, 0),
+  ((select id from public.puppies where slug = 'clover'), 'Panacur 10% oral suspension', '2026-01-22'::date, 1),
+  ((select id from public.puppies where slug = 'clover'), 'Panacur 10% oral suspension', '2026-02-12'::date, 2);
 
 insert into public.puppies (
   slug, name, sex, date_of_birth, status, temperament_tags,
   temperament_notes, photos, display_order, sire_id, dam_id
 ) values (
-  'atticus', 'Atticus', 'male'::puppy_sex, '2025-10-21'::date,
+  'atticus', 'Atticus', 'male'::puppy_sex, '2025-10-30'::date,
   'placed'::puppy_status, array['confident', 'loyal', 'spirited']::text[],
   'Atticus was placed with a retired couple who wanted a small companion with a large personality. By all accounts they got exactly what they asked for and have no regrets whatsoever.',
   array['https://images.unsplash.com/photo-1650132392843-cb49902dfcf1?w=900&h=1100&fit=crop&auto=format']::text[], 14,
@@ -434,24 +434,24 @@ on conflict (slug) do update set
 
 delete from public.puppy_vaccinations where puppy_id = (select id from public.puppies where slug = 'atticus');
 insert into public.puppy_vaccinations (puppy_id, name, administered, due, done, display_order) values
-  ((select id from public.puppies where slug = 'atticus'), 'DHPPi — first (8 weeks)', '2025-12-16'::date, null, true, 0),
-  ((select id from public.puppies where slug = 'atticus'), 'Kennel Cough — intranasal', '2025-12-16'::date, null, true, 1),
-  ((select id from public.puppies where slug = 'atticus'), 'DHPPi — second (12 weeks)', '2026-01-13'::date, null, true, 2),
-  ((select id from public.puppies where slug = 'atticus'), 'Rabies', '2026-02-10'::date, null, true, 3);
+  ((select id from public.puppies where slug = 'atticus'), 'DHPPi — first (8 weeks)', '2025-12-25'::date, null, true, 0),
+  ((select id from public.puppies where slug = 'atticus'), 'Kennel Cough — intranasal', '2025-12-25'::date, null, true, 1),
+  ((select id from public.puppies where slug = 'atticus'), 'DHPPi — second (12 weeks)', '2026-01-22'::date, null, true, 2),
+  ((select id from public.puppies where slug = 'atticus'), 'Rabies', '2026-02-19'::date, null, true, 3);
 
 delete from public.puppy_dewormings where puppy_id = (select id from public.puppies where slug = 'atticus');
 insert into public.puppy_dewormings (puppy_id, product, administered, display_order) values
-  ((select id from public.puppies where slug = 'atticus'), 'Panacur 10% oral suspension', '2025-11-11'::date, 0),
-  ((select id from public.puppies where slug = 'atticus'), 'Panacur 10% oral suspension', '2025-12-02'::date, 1),
-  ((select id from public.puppies where slug = 'atticus'), 'Panacur 10% oral suspension', '2025-12-23'::date, 2);
+  ((select id from public.puppies where slug = 'atticus'), 'Panacur 10% oral suspension', '2025-11-20'::date, 0),
+  ((select id from public.puppies where slug = 'atticus'), 'Panacur 10% oral suspension', '2025-12-11'::date, 1),
+  ((select id from public.puppies where slug = 'atticus'), 'Panacur 10% oral suspension', '2026-01-01'::date, 2);
 
 -- Guides -------------------------------------------------------------
 insert into public.guides (slug, title, summary, reading_time_min, published_date, sections, display_order) values
-  ('the-yorkshire-terrier-coat', 'The Yorkshire Terrier coat', 'Silk, not fur — how to keep the steel-blue and tan coat in condition, and an honest account of what a long coat actually costs in time.', 8, '2026-07-10'::date, '[{"body":"A Yorkshire Terrier''s coat is a single layer of fine hair with the texture of human hair rather than the double coat of most breeds. It grows continuously instead of shedding seasonally, which is why the breed suits many allergy-sensitive households — and also why it will mat within days if left alone. There is no version of this breed that is low-maintenance in the coat."},{"heading":"The two honest options","body":"You are choosing between a full-length coat and a short trim, and you should choose deliberately rather than drifting. A full coat means daily brushing, most likely wrapping, and a groomer who understands the breed. A short ''puppy cut'' — an inch or so all over — means a brush two or three times a week and a groom every six to eight weeks. Most pet homes are far happier with the short trim, and there is no shame in it. The dog does not know what it is missing."},{"heading":"Daily brushing","body":"Five minutes daily beats half an hour on Sunday. Use a pin brush without balls on the tips, and mist the coat lightly with a leave-in conditioner first — brushing a Yorkshire Terrier''s coat dry snaps the hair. Work in sections from the skin outward, holding the hair above the tangle with your fingers so you are not dragging against the skin. Pay particular attention behind the ears, under the collar, in the armpits and around the back end."},{"heading":"Bathing","body":"Every one to two weeks. Use a shampoo formulated for silky coats and rinse until you are certain, then rinse once more — residue is the single most common cause of a dull, quickly-matting coat. Condition, comb through while wet, and dry with a dryer on low while brushing. Letting the coat air-dry in a heap is how mats form."},{"heading":"The topknot","body":"The hair above the eyes will grow into them. Either trim it short or tie it up — both are fine, doing neither is not. Use a small latex band rather than a rubber or metal one, retie it daily so the hair is not folded under tension in the same spot, and take it out at night."},{"heading":"Colour changes","body":"Puppies are born black and tan and lighten to the adult steel-blue and gold over roughly the first two years. This is normal and gradual, and the final shade is difficult to predict from an eight-week-old puppy. Anyone guaranteeing you an exact adult colour is guessing."}]'::jsonb, 0),
-  ('a-small-dog-is-a-fragile-dog', 'A small dog is a fragile dog', 'Yorkshire Terriers weigh two to three kilograms as adults. What that means for stairs, sofas, children, and the way you carry them.', 7, '2026-07-25'::date, '[{"body":"This is the guide we most want adopters to read. An adult Yorkshire Terrier weighs about the same as a bag of sugar. Nearly every serious injury we hear about in the breed comes from something entirely ordinary — a jump off a sofa, a missed step, a door closed too quickly, someone standing up without looking down first."},{"heading":"Height is the main danger","body":"A jump from a sofa or a bed is a long fall for a dog this size and is a common cause of fractured legs. Use ramps or pet steps from the first day so the habit is built early, and discourage jumping down even when they clearly want to. Carry them on stairs while they are young."},{"heading":"Carrying them properly","body":"Support the chest with one hand and the hindquarters with the other. Never lift by the front legs or scoop under the armpits alone — the shoulder structure is delicate. Teach children to sit on the floor and let the dog come to them rather than picking the dog up at all."},{"heading":"Collapsing trachea","body":"The breed is prone to a weakening of the windpipe that produces a distinctive honking cough, often worse with excitement or pressure on the throat. Use a harness rather than a collar for walking — this is not optional advice for this breed. If you hear a persistent honking cough, see your vet rather than waiting."},{"heading":"Low blood sugar in puppies","body":"Very young or very small Yorkshire Terriers can drop into hypoglycaemia if they go too long without eating, especially when stressed by a move or a long journey. Signs are wobbliness, glazed eyes, or unusual sleepiness. Feed small meals frequently in the first months, keep a glucose gel in the house, and ring your vet immediately if you see it. We will talk you through this before any puppy leaves."},{"heading":"Children","body":"We do place with families, and we do so happily where the children are old enough to understand that this dog is breakable. As a rough guide that tends to mean school age. This is not about how well-behaved a child is; it is about size and physics."}]'::jsonb, 1),
-  ('teeth-and-dental-care', 'Teeth: the thing most owners underestimate', 'Small mouths crowd, and crowded teeth decay. Dental disease is the most common avoidable health problem in the breed.', 6, '2026-08-06'::date, '[{"body":"Yorkshire Terriers have the same number of teeth as a much larger dog packed into a considerably smaller jaw. The crowding traps food and plaque, and plaque becomes tartar quickly. Untreated, that means gum disease, pain, tooth loss, and in bad cases infection that affects the heart and kidneys. It is the most common serious health problem we see in the breed, and it is almost entirely preventable."},{"heading":"Brush daily","body":"Daily, with a dog-specific enzymatic toothpaste — never human toothpaste, which contains fluoride and often xylitol. A finger brush is easier than a toothbrush for a mouth this small. Start on day one with the puppy, before there is any tartar, so the routine is normal rather than a fight. Thirty seconds counts."},{"heading":"Retained puppy teeth","body":"It is common in this breed for baby teeth, particularly the canines, not to fall out as the adult teeth come through, leaving two teeth in one socket. This traps food and accelerates decay. Your vet should check for it around six months, and any retained teeth are usually removed at the same time as spaying or neutering so the dog only goes under anaesthetic once."},{"heading":"Professional cleaning","body":"Budget for a scale and polish under anaesthetic every one to two years from middle age. It is not a failure of your home care — it is the reality of the breed''s mouth. Ask your vet for a quote before you need one so it is not a surprise."},{"heading":"What does not work","body":"Dental chews and water additives help a little at the margins. They do not replace brushing, and a dog whose only dental care is a daily chew will still develop disease. Be sceptical of any product marketed as a substitute for a toothbrush."}]'::jsonb, 2),
-  ('the-terrier-in-the-lapdog', 'The terrier in the lapdog', 'This breed was bred to catch rats in Yorkshire mills. Barking, digging, and a great deal of opinion are features, not faults.', 7, '2026-08-16'::date, '[{"body":"The Yorkshire Terrier is sold as a lapdog and is genuinely affectionate, but the breed was developed in nineteenth-century Yorkshire to kill rats in textile mills. That history is still very much present. People who expect a small, decorative, quiet dog are often surprised, and the surprise is the most common reason a Yorkie ends up needing rehoming."},{"heading":"They bark","body":"This breed is vocal and was bred to be. They will announce the post, the neighbours, and a leaf. You can absolutely reduce it with training — teaching a reliable ''enough'', rewarding quiet, not rewarding the bark with attention — but you will not eliminate it, and a household that needs silence should think carefully. If you live somewhere with shared walls and a strict noise policy, be honest with yourself about this before applying."},{"heading":"They dig and they chase","body":"A secure garden means secure at ground level. Yorkshire Terriers will dig under a fence and squeeze through a gap you would swear was too small. Their recall around small moving animals is unreliable in the way any terrier''s is, so a lead in unfenced spaces is a sensible default rather than an insult to your training."},{"heading":"They have opinions about other dogs","body":"Many Yorkies have no idea they are small and will confront a dog ten times their size. This is dangerous for them, not the other dog. Early, careful socialisation genuinely helps. So does not letting them practise the behaviour — picking them up mid-confrontation teaches them the strategy works."},{"heading":"The upside","body":"Everything above is the same trait from a different angle: this is a bright, bold, engaged little dog with real character. They train well because they are clever and want to be involved. They are funny. They bond hard. Adopters who wanted a dog with a personality rather than an ornament are, in our experience, the ones who stay delighted for the next fifteen years."}]'::jsonb, 3),
-  ('settling-a-yorkshire-terrier', 'The first fortnight', 'House-training a very small dog, crate routines, and building tolerance for being alone before it becomes a problem.', 6, '2026-08-22'::date, '[{"body":"The first two weeks set the pattern for years. Keep them calm and structured. Resist the urge to invite everyone round to meet the puppy — a quiet first fortnight produces a more confident adult than an exciting one."},{"heading":"House-training a small bladder","body":"Small dogs need to go out more often, and Yorkshire Terriers have a reputation for being slow to house-train that is mostly a reflection of that. Take them out every hour while awake, and immediately after sleeping, eating or playing. Reward outside, in the moment, every time. Do not punish accidents — a puppy who learns you dislike seeing them go will simply hide to do it. In cold or wet weather many owners find an indoor tray a sensible backup rather than a failure."},{"heading":"Being alone","body":"This breed is prone to separation anxiety, and the best time to prevent it is before it starts. From the first week, leave them alone for very short periods — two minutes, then five, then fifteen — while you are still in the house. Do not make departures or returns emotional. A puppy who has never once been alone until you go back to work is a puppy who will panic."},{"heading":"The crate","body":"A crate is a bedroom, not a punishment. Feed meals in it, leave it open, let them choose it. For a dog this small the crate is also a genuine safety measure — it is somewhere they cannot be trodden on or sat on while everyone is busy."},{"heading":"Ring us","body":"We would far rather answer a question in week one than hear about a problem in month six. Every puppy leaves here with our number, and there is no question too small. That is not a courtesy — it is part of the arrangement."}]'::jsonb, 4)
+  ('the-yorkshire-terrier-coat', 'The Yorkshire Terrier coat', 'Silk, not fur — how to keep the steel-blue and tan coat in condition, and an honest account of what a long coat actually costs in time.', 8, '2026-07-19'::date, '[{"body":"A Yorkshire Terrier''s coat is a single layer of fine hair with the texture of human hair rather than the double coat of most breeds. It grows continuously instead of shedding seasonally, which is why the breed suits many allergy-sensitive households — and also why it will mat within days if left alone. There is no version of this breed that is low-maintenance in the coat."},{"heading":"The two honest options","body":"You are choosing between a full-length coat and a short trim, and you should choose deliberately rather than drifting. A full coat means daily brushing, most likely wrapping, and a groomer who understands the breed. A short ''puppy cut'' — an inch or so all over — means a brush two or three times a week and a groom every six to eight weeks. Most pet homes are far happier with the short trim, and there is no shame in it. The dog does not know what it is missing."},{"heading":"Daily brushing","body":"Five minutes daily beats half an hour on Sunday. Use a pin brush without balls on the tips, and mist the coat lightly with a leave-in conditioner first — brushing a Yorkshire Terrier''s coat dry snaps the hair. Work in sections from the skin outward, holding the hair above the tangle with your fingers so you are not dragging against the skin. Pay particular attention behind the ears, under the collar, in the armpits and around the back end."},{"heading":"Bathing","body":"Every one to two weeks. Use a shampoo formulated for silky coats and rinse until you are certain, then rinse once more — residue is the single most common cause of a dull, quickly-matting coat. Condition, comb through while wet, and dry with a dryer on low while brushing. Letting the coat air-dry in a heap is how mats form."},{"heading":"The topknot","body":"The hair above the eyes will grow into them. Either trim it short or tie it up — both are fine, doing neither is not. Use a small latex band rather than a rubber or metal one, retie it daily so the hair is not folded under tension in the same spot, and take it out at night."},{"heading":"Colour changes","body":"Puppies are born black and tan and lighten to the adult steel-blue and gold over roughly the first two years. This is normal and gradual, and the final shade is difficult to predict from an eight-week-old puppy. Anyone guaranteeing you an exact adult colour is guessing."}]'::jsonb, 0),
+  ('a-small-dog-is-a-fragile-dog', 'A small dog is a fragile dog', 'Yorkshire Terriers weigh two to three kilograms as adults. What that means for stairs, sofas, children, and the way you carry them.', 7, '2026-08-03'::date, '[{"body":"This is the guide we most want adopters to read. An adult Yorkshire Terrier weighs about the same as a bag of sugar. Nearly every serious injury we hear about in the breed comes from something entirely ordinary — a jump off a sofa, a missed step, a door closed too quickly, someone standing up without looking down first."},{"heading":"Height is the main danger","body":"A jump from a sofa or a bed is a long fall for a dog this size and is a common cause of fractured legs. Use ramps or pet steps from the first day so the habit is built early, and discourage jumping down even when they clearly want to. Carry them on stairs while they are young."},{"heading":"Carrying them properly","body":"Support the chest with one hand and the hindquarters with the other. Never lift by the front legs or scoop under the armpits alone — the shoulder structure is delicate. Teach children to sit on the floor and let the dog come to them rather than picking the dog up at all."},{"heading":"Collapsing trachea","body":"The breed is prone to a weakening of the windpipe that produces a distinctive honking cough, often worse with excitement or pressure on the throat. Use a harness rather than a collar for walking — this is not optional advice for this breed. If you hear a persistent honking cough, see your vet rather than waiting."},{"heading":"Low blood sugar in puppies","body":"Very young or very small Yorkshire Terriers can drop into hypoglycaemia if they go too long without eating, especially when stressed by a move or a long journey. Signs are wobbliness, glazed eyes, or unusual sleepiness. Feed small meals frequently in the first months, keep a glucose gel in the house, and ring your vet immediately if you see it. We will talk you through this before any puppy leaves."},{"heading":"Children","body":"We do place with families, and we do so happily where the children are old enough to understand that this dog is breakable. As a rough guide that tends to mean school age. This is not about how well-behaved a child is; it is about size and physics."}]'::jsonb, 1),
+  ('teeth-and-dental-care', 'Teeth: the thing most owners underestimate', 'Small mouths crowd, and crowded teeth decay. Dental disease is the most common avoidable health problem in the breed.', 6, '2026-08-15'::date, '[{"body":"Yorkshire Terriers have the same number of teeth as a much larger dog packed into a considerably smaller jaw. The crowding traps food and plaque, and plaque becomes tartar quickly. Untreated, that means gum disease, pain, tooth loss, and in bad cases infection that affects the heart and kidneys. It is the most common serious health problem we see in the breed, and it is almost entirely preventable."},{"heading":"Brush daily","body":"Daily, with a dog-specific enzymatic toothpaste — never human toothpaste, which contains fluoride and often xylitol. A finger brush is easier than a toothbrush for a mouth this small. Start on day one with the puppy, before there is any tartar, so the routine is normal rather than a fight. Thirty seconds counts."},{"heading":"Retained puppy teeth","body":"It is common in this breed for baby teeth, particularly the canines, not to fall out as the adult teeth come through, leaving two teeth in one socket. This traps food and accelerates decay. Your vet should check for it around six months, and any retained teeth are usually removed at the same time as spaying or neutering so the dog only goes under anaesthetic once."},{"heading":"Professional cleaning","body":"Budget for a scale and polish under anaesthetic every one to two years from middle age. It is not a failure of your home care — it is the reality of the breed''s mouth. Ask your vet for a quote before you need one so it is not a surprise."},{"heading":"What does not work","body":"Dental chews and water additives help a little at the margins. They do not replace brushing, and a dog whose only dental care is a daily chew will still develop disease. Be sceptical of any product marketed as a substitute for a toothbrush."}]'::jsonb, 2),
+  ('the-terrier-in-the-lapdog', 'The terrier in the lapdog', 'This breed was bred to catch rats in Yorkshire mills. Barking, digging, and a great deal of opinion are features, not faults.', 7, '2026-08-25'::date, '[{"body":"The Yorkshire Terrier is sold as a lapdog and is genuinely affectionate, but the breed was developed in nineteenth-century Yorkshire to kill rats in textile mills. That history is still very much present. People who expect a small, decorative, quiet dog are often surprised, and the surprise is the most common reason a Yorkie ends up needing rehoming."},{"heading":"They bark","body":"This breed is vocal and was bred to be. They will announce the post, the neighbours, and a leaf. You can absolutely reduce it with training — teaching a reliable ''enough'', rewarding quiet, not rewarding the bark with attention — but you will not eliminate it, and a household that needs silence should think carefully. If you live somewhere with shared walls and a strict noise policy, be honest with yourself about this before applying."},{"heading":"They dig and they chase","body":"A secure garden means secure at ground level. Yorkshire Terriers will dig under a fence and squeeze through a gap you would swear was too small. Their recall around small moving animals is unreliable in the way any terrier''s is, so a lead in unfenced spaces is a sensible default rather than an insult to your training."},{"heading":"They have opinions about other dogs","body":"Many Yorkies have no idea they are small and will confront a dog ten times their size. This is dangerous for them, not the other dog. Early, careful socialisation genuinely helps. So does not letting them practise the behaviour — picking them up mid-confrontation teaches them the strategy works."},{"heading":"The upside","body":"Everything above is the same trait from a different angle: this is a bright, bold, engaged little dog with real character. They train well because they are clever and want to be involved. They are funny. They bond hard. Adopters who wanted a dog with a personality rather than an ornament are, in our experience, the ones who stay delighted for the next fifteen years."}]'::jsonb, 3),
+  ('settling-a-yorkshire-terrier', 'The first fortnight', 'House-training a very small dog, crate routines, and building tolerance for being alone before it becomes a problem.', 6, '2026-08-31'::date, '[{"body":"The first two weeks set the pattern for years. Keep them calm and structured. Resist the urge to invite everyone round to meet the puppy — a quiet first fortnight produces a more confident adult than an exciting one."},{"heading":"House-training a small bladder","body":"Small dogs need to go out more often, and Yorkshire Terriers have a reputation for being slow to house-train that is mostly a reflection of that. Take them out every hour while awake, and immediately after sleeping, eating or playing. Reward outside, in the moment, every time. Do not punish accidents — a puppy who learns you dislike seeing them go will simply hide to do it. In cold or wet weather many owners find an indoor tray a sensible backup rather than a failure."},{"heading":"Being alone","body":"This breed is prone to separation anxiety, and the best time to prevent it is before it starts. From the first week, leave them alone for very short periods — two minutes, then five, then fifteen — while you are still in the house. Do not make departures or returns emotional. A puppy who has never once been alone until you go back to work is a puppy who will panic."},{"heading":"The crate","body":"A crate is a bedroom, not a punishment. Feed meals in it, leave it open, let them choose it. For a dog this small the crate is also a genuine safety measure — it is somewhere they cannot be trodden on or sat on while everyone is busy."},{"heading":"Ring us","body":"We would far rather answer a question in week one than hear about a problem in month six. Every puppy leaves here with our number, and there is no question too small. That is not a courtesy — it is part of the arrangement."}]'::jsonb, 4)
 on conflict (slug) do update set
   title = excluded.title, summary = excluded.summary,
   reading_time_min = excluded.reading_time_min,
@@ -461,7 +461,7 @@ on conflict (slug) do update set
 insert into public.site_settings (key, value, is_public) values
   ('site_name', '"Yorkshire Adoption Home"'::jsonb, true),
   ('tagline', '"A small, selective Yorkshire Terrier breeder. One or two litters a year, raised in our kitchen."'::jsonb, true),
-  ('contact_email', '"support@yorkieadoptionhome.com"'::jsonb, true),
+  ('contact_email', '"hello@yorkshire-adoption.example"'::jsonb, true),
   ('contact_phone', '"+1 (858) 798-6768"'::jsonb, true),
   ('whatsapp_number', '"18587986768"'::jsonb, true),
   ('address', '""'::jsonb, true),
@@ -472,7 +472,7 @@ insert into public.site_settings (key, value, is_public) values
   ('messenger_away_message', '"We are not at the desk right now. Leave a message and your email, and we will come back to you."'::jsonb, true),
   ('office_hours', '"Mon-Sat, 9am - 6pm (GMT+8)"'::jsonb, true),
   ('review_sla_days', '14'::jsonb, true),
-  ('notify_email', '"ntuhgireseelezanw@gmail.com"'::jsonb, false)
+  ('notify_email', '"hello@yorkshire-adoption.example"'::jsonb, false)
 on conflict (key) do nothing;
 
 commit;
