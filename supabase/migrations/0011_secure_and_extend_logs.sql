@@ -46,13 +46,19 @@ grant all on table public.emails to authenticated, service_role;
 
 alter table public.emails enable row level security;
 
--- Clear out every policy 0008 and 0010 left behind, under both names.
+-- Clear out every policy 0008 and 0010 left behind, under both names, and
+-- this migration's own names too: the runner replays every file on each run,
+-- so a bare `create policy` fails the second time through.
 drop policy if exists "Anon/Server can insert emails" on public.emails;
 drop policy if exists "Staff can insert emails"       on public.emails;
 drop policy if exists "Staff can view emails"         on public.emails;
 drop policy if exists "Admins can view emails"        on public.emails;
 drop policy if exists "Admins can delete emails"      on public.emails;
 drop policy if exists "Admins can update emails"      on public.emails;
+drop policy if exists emails_server_insert            on public.emails;
+drop policy if exists emails_staff_read               on public.emails;
+drop policy if exists emails_staff_update             on public.emails;
+drop policy if exists emails_admin_delete             on public.emails;
 
 -- Write-only for the serverless functions and the public site.
 create policy emails_server_insert on public.emails
@@ -109,6 +115,10 @@ drop policy if exists "Staff can insert whatsapp_logs"       on public.whatsapp_
 drop policy if exists "Staff can view whatsapp_logs"         on public.whatsapp_logs;
 drop policy if exists "Admins can view whatsapp_logs"        on public.whatsapp_logs;
 drop policy if exists "Admins can delete whatsapp_logs"      on public.whatsapp_logs;
+drop policy if exists whatsapp_logs_server_insert            on public.whatsapp_logs;
+drop policy if exists whatsapp_logs_staff_read               on public.whatsapp_logs;
+drop policy if exists whatsapp_logs_staff_update             on public.whatsapp_logs;
+drop policy if exists whatsapp_logs_admin_delete             on public.whatsapp_logs;
 
 create policy whatsapp_logs_server_insert on public.whatsapp_logs
   for insert to anon, authenticated with check (true);

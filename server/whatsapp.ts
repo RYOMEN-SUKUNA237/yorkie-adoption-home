@@ -6,18 +6,28 @@
  * to open WhatsApp and press send. This module actually delivers, through
  * whichever provider is configured, and records the outcome truthfully.
  *
- * Two providers are supported and auto-detected, Meta first:
+ * Two providers are supported and auto-detected:
  *
- *   Meta WhatsApp Cloud API   WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN
  *   Twilio                    TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
- *                             TWILIO_WHATSAPP_NUMBER
+ *                             TWILIO_WHATSAPP_NUMBER, TWILIO_CONTENT_SID
+ *   Meta WhatsApp Cloud API   WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN,
+ *                             WHATSAPP_TEMPLATE_NAME
  *
- * A constraint worth knowing before blaming the code: WhatsApp does not let
- * a business send arbitrary text to someone who has not messaged it in the
- * last 24 hours. Outside that window only a pre-approved *template* is
- * accepted — Meta rejects free-form text with error 131047. Set
- * WHATSAPP_TEMPLATE_NAME (and have the template approved) and this module
- * sends the template instead of plain text, which works at any time.
+ * Twilio is the easier of the two to stand up and is what the setup guide
+ * walks through; Meta is cheaper at volume. Nothing here prefers one, so
+ * whichever set of credentials exists is the one used.
+ *
+ * A constraint worth knowing before blaming the code, and it applies to both
+ * providers because it is a WhatsApp rule rather than a vendor one: a
+ * business may not send arbitrary text to someone who has not messaged it in
+ * the last 24 hours. Outside that window only a pre-approved *template* is
+ * accepted — Meta rejects free-form text with error 131047, Twilio with
+ * 63016. Approval emails almost always fall outside the window, so a
+ * template is not optional for this site's main use.
+ *
+ * Point TWILIO_CONTENT_SID (or WHATSAPP_TEMPLATE_NAME) at an approved
+ * template and this module sends that instead of plain text, which works at
+ * any time. `templateParams` substitute in order.
  */
 
 import { optional } from "./server.js";
@@ -62,12 +72,29 @@ export function waLink(phone: string, message: string): string {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
+/**
+ * Only one provider's credentials are ever expected to be present, so this
+ * order decides nothing in practice. Twilio is checked first purely because
+ * it is the documented route.
+ */
 export function configuredProvider(): WhatsAppProvider {
-  if (optional("WHATSAPP_PHONE_NUMBER_ID") && optional("WHATSAPP_ACCESS_TOKEN")) return "meta";
   if (optional("TWILIO_ACCOUNT_SID") && optional("TWILIO_AUTH_TOKEN") && optional("TWILIO_WHATSAPP_NUMBER")) {
     return "twilio";
   }
+  if (optional("WHATSAPP_PHONE_NUMBER_ID") && optional("WHATSAPP_ACCESS_TOKEN")) return "meta";
   return "none";
+}
+
+/**
+ * Whether the configured provider can reach someone who has not written in
+ * the last 24 hours. False means delivery works only during an open
+ * conversation window, which for an approval notice is almost never.
+ */
+export function hasApprovedTemplate(): boolean {
+  const provider = configuredProvider();
+  if (provider === "twilio") return Boolean(optional("TWILIO_CONTENT_SID"));
+  if (provider === "meta") return Boolean(optional("WHATSAPP_TEMPLATE_NAME"));
+  return false;
 }
 
 interface Attempt {
@@ -146,13 +173,35 @@ async function sendViaMeta(phone: string, message: string, templateParams?: stri
   };
 }
 
-async function sendViaTwilio(phone: string, message: string): Promise<Attempt> {
+async function sendViaTwilio(
+  phone: string,
+  message: string,
+  templateParams?: string[]
+): Promise<Attempt> {
   const sid = optional("TWILIO_ACCOUNT_SID")!;
   const token = optional("TWILIO_AUTH_TOKEN")!;
   const sender = optional("TWILIO_WHATSAPP_NUMBER")!;
+  const contentSid = optional("TWILIO_CONTENT_SID");
   const from = sender.startsWith("whatsapp:") ? sender : `whatsapp:${sender.startsWith("+") ? sender : `+${sender}`}`;
 
-  const params = new URLSearchParams({ From: from, To: `whatsapp:+${phone}`, Body: message });
+  const params = new URLSearchParams({ From: from, To: `whatsapp:+${phone}` });
+
+  if (contentSid && templateParams?.length) {
+    // Twilio's Content API is how an approved WhatsApp template is sent:
+    // `ContentSid` names the template and `ContentVariables` is a JSON object
+    // keyed by the template's 1-based placeholder numbers. `Body` must be
+    // omitted — sending both makes Twilio fall back to the free-form path,
+    // which is refused outside the 24-hour window with error 63016.
+    params.set("ContentSid", contentSid);
+    params.set(
+      "ContentVariables",
+      JSON.stringify(
+        Object.fromEntries(templateParams.map((text, i) => [String(i + 1), flatten(text)]))
+      )
+    );
+  } else {
+    params.set("Body", message);
+  }
 
   const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
     method: "POST",
@@ -210,8 +259,9 @@ export async function sendWhatsApp(input: {
       delivered: false,
       messageId: null,
       error:
-        "No WhatsApp provider configured. Set WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN " +
-        "(Meta Cloud API), or TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_NUMBER.",
+        "No WhatsApp provider configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and " +
+        "TWILIO_WHATSAPP_NUMBER, or WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN " +
+        "for the Meta Cloud API.",
       errorCode: "not_configured",
       phone,
       link,
@@ -222,7 +272,7 @@ export async function sendWhatsApp(input: {
     const attempt =
       provider === "meta"
         ? await sendViaMeta(phone, input.message, input.templateParams)
-        : await sendViaTwilio(phone, input.message);
+        : await sendViaTwilio(phone, input.message, input.templateParams);
 
     return { provider, ...attempt, phone, link };
   } catch (err) {

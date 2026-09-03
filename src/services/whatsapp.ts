@@ -36,6 +36,12 @@ export interface WhatsAppGatewayStatus {
   provider: "meta" | "twilio" | "none";
   /** True when a provider is configured and sends need no human step. */
   automatic: boolean;
+  /**
+   * True when an approved WhatsApp template is configured. Without one the
+   * gateway can only reach a client who wrote within the last 24 hours, so a
+   * configured-but-untemplated gateway still fails most approval notices.
+   */
+  templated?: boolean;
   hint?: string;
 }
 
@@ -54,6 +60,7 @@ export async function getWhatsAppGatewayStatus(): Promise<WhatsAppGatewayStatus>
     return {
       provider: data.provider ?? "none",
       automatic: Boolean(data.automatic),
+      templated: Boolean(data.templated),
       hint: data.hint,
     };
   } catch {

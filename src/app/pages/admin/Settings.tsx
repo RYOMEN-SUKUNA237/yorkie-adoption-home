@@ -108,7 +108,7 @@ export default function Settings() {
                     type="tel"
                     value={settingString(draft, "contact_phone")}
                     onChange={(e) => set("contact_phone", e.target.value)}
-                    placeholder="+1 (218) 833-2266"
+                    placeholder="+1 (858) 798-6768"
                   />
                 </Field>
               </div>
@@ -120,7 +120,7 @@ export default function Settings() {
                   <TextInput
                     value={settingString(draft, "whatsapp_number")}
                     onChange={(e) => set("whatsapp_number", e.target.value)}
-                    placeholder="12188332266"
+                    placeholder="18587986768"
                   />
                 </Field>
                 <Field label="Office hours">

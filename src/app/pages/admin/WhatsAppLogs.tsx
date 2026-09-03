@@ -113,9 +113,11 @@ const PROVIDER_LABEL: Record<string, string> = {
 function GatewayBanner({
   status,
 }: {
-  status: { provider: string; automatic: boolean; hint?: string };
+  status: { provider: string; automatic: boolean; templated?: boolean; hint?: string };
 }) {
-  if (status.automatic) {
+  // Fully working: credentials *and* an approved template, so a message
+  // reaches the client whether or not a conversation window is open.
+  if (status.automatic && status.templated) {
     return (
       <div className="flex items-start gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3">
         <Zap size={14} className="text-primary mt-0.5 shrink-0" />
@@ -123,9 +125,30 @@ function GatewayBanner({
           Sending automatically through{" "}
           <span className="text-foreground font-medium">
             {PROVIDER_LABEL[status.provider] ?? status.provider}
-          </span>
-          . No manual step is involved.
+          </span>{" "}
+          using an approved template. No manual step is involved.
         </p>
+      </div>
+    );
+  }
+
+  // Connected but templateless. This is the state that looks fine and is
+  // not: sends succeed only inside an open 24-hour window, which an approval
+  // notice almost never falls in.
+  if (status.automatic) {
+    return (
+      <div className="flex items-start gap-3 rounded-lg border border-primary/40 bg-primary/5 px-4 py-3">
+        <AlertTriangle size={14} className="text-primary mt-0.5 shrink-0" />
+        <div className="text-xs leading-relaxed">
+          <p className="text-foreground font-medium mb-1">
+            Connected to {PROVIDER_LABEL[status.provider] ?? status.provider}, but no approved
+            template
+          </p>
+          <p className="text-muted-foreground">
+            {status.hint ??
+              "WhatsApp refuses free-form messages more than 24 hours after the client last wrote, so most approvals will fail until a template is configured."}
+          </p>
+        </div>
       </div>
     );
   }
@@ -213,12 +236,17 @@ function LogCard({
             Gateway response
           </p>
           <p className="text-xs text-foreground leading-relaxed break-words">{row.error}</p>
-          {/* The single most common rejection, and it is not a bug in the site. */}
-          {row.error.includes("131047") && (
+          {/*
+            The single most common rejection, and it is not a bug in the site.
+            Meta calls it 131047, Twilio 63016; the cause is the same WhatsApp
+            rule, so both get the same explanation.
+          */}
+          {(row.error.includes("131047") || row.error.includes("63016")) && (
             <p className="text-xs text-muted-foreground leading-relaxed mt-2">
               WhatsApp refuses free-form text more than 24 hours after the client last messaged
-              you. Sending outside that window needs an approved template — set
-              WHATSAPP_TEMPLATE_NAME once yours is approved.
+              you. Sending outside that window needs an approved template — set{" "}
+              {row.provider === "twilio" ? "TWILIO_CONTENT_SID" : "WHATSAPP_TEMPLATE_NAME"} once
+              yours is approved.
             </p>
           )}
         </div>

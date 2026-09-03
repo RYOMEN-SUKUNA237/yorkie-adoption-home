@@ -18,22 +18,33 @@ import {
   type ApiRequest,
   type ApiResponse,
 } from "../server/server.js";
-import { configuredProvider, sendWhatsApp } from "../server/whatsapp.js";
+import { configuredProvider, hasApprovedTemplate, sendWhatsApp } from "../server/whatsapp.js";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (applyCors(req, res, "POST, GET, OPTIONS")) return;
 
   // A quick way to check from a browser whether credentials reached Vercel.
+  //
+  // Credentials alone are not the whole story. Without an approved template
+  // the gateway can only reach someone who wrote in the last 24 hours, which
+  // an approval notice almost never is, so that is reported separately
+  // rather than folded into `automatic`.
   if (req.method === "GET") {
     const provider = configuredProvider();
+    const templated = hasApprovedTemplate();
     return res.status(200).json({
       status: "ok",
       provider,
       automatic: provider !== "none",
+      templated,
       hint:
         provider === "none"
-          ? "Set WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN (Meta), or TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_NUMBER."
-          : undefined,
+          ? "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_NUMBER, or WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN for the Meta Cloud API."
+          : templated
+            ? undefined
+            : provider === "twilio"
+              ? "Connected, but no approved template is set. Free-form messages are refused more than 24 hours after the client last wrote (error 63016). Set TWILIO_CONTENT_SID to the ContentSid of an approved template."
+              : "Connected, but no approved template is set. Free-form messages are refused more than 24 hours after the client last wrote (error 131047). Set WHATSAPP_TEMPLATE_NAME to an approved template.",
     });
   }
 

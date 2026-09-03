@@ -189,33 +189,120 @@ the beginning of a loop.
 
 WhatsApp does not let a business send arbitrary text to someone who has not
 messaged it in the last 24 hours. Outside that window only a **pre-approved
-template** is accepted; Meta rejects free-form text with error `131047`. No
-provider can get around this — it is enforced by WhatsApp, not by the gateway.
+template** is accepted. No provider gets around this — it is enforced by
+WhatsApp, not by the gateway — so the two error codes below mean the same
+thing:
 
-So "send automatically with no human intervention" needs a WhatsApp Business
-account with an approved template. Once you have one, set
-`WHATSAPP_TEMPLATE_NAME` and delivery works at any time. Without it, delivery
-works only for clients who have messaged you recently.
+```
+63016   Twilio    "Failed to send freeform message ... outside the allowed window"
+131047  Meta      "Re-engagement message"
+```
+
+An approval notice goes out days after the applicant filled in the form, so it
+is essentially always outside the window. **A template is required, not
+optional.** With one, delivery is automatic at any time; without one, delivery
+works only for the rare client who happened to message you that day.
+
+### Setting it up with Twilio
+
+Twilio is the easier of the two routes and the one these steps follow: the
+credentials exist the moment you sign up, and Twilio submits the template to
+Meta on your behalf instead of leaving you to drive Meta's console. Meta direct
+is cheaper at volume — see below — but costs more setup.
+
+**1. Account.** Sign up at twilio.com. The console home page shows
+`Account SID` and `Auth Token`.
+
+**2. Sender.** Messaging → Senders → WhatsApp senders → *New sender*, and
+register **+1 (858) 798-6768**. Twilio's wizard creates or links the Meta
+Business account and asks for business details; the number must be able to
+receive the verification code, and it must not already be registered to a
+personal or Business-app WhatsApp account. If it is, delete that account in
+the WhatsApp app first and wait for the deregistration to take effect.
+
+**3. Template.** Messaging → Content Template Builder → *Create new*, type
+**WhatsApp Template**, category **Utility** (not Marketing — Utility approves
+faster and carries no opt-in requirement). Body:
+
+```
+Hello {{1}} — your adoption application {{2}} for {{3}} has been approved.
+
+Your certificate of approval: {{4}}
+
+Reply here or open the support chat on our website to arrange collection.
+```
+
+Submit it for WhatsApp approval. Utility templates usually clear within a few
+hours. When it is approved, copy its **ContentSid** — it starts `HX`.
+
+**4. Variables.** The four placeholders are filled in this order, and the
+order is fixed by `src/services/applications.ts`:
+
+| Placeholder | Value                 |
+| ----------- | --------------------- |
+| `{{1}}`     | applicant name        |
+| `{{2}}`     | application reference |
+| `{{3}}`     | puppy name            |
+| `{{4}}`     | certificate URL       |
+
+Change the template's wording freely, but keep the placeholders in that order
+or the message will read as nonsense.
+
+**5. Vercel.** Project → Settings → Environment Variables, Production and
+Preview both:
+
+```
+TWILIO_ACCOUNT_SID     ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN      (from the console)
+TWILIO_WHATSAPP_NUMBER +18587986768
+TWILIO_CONTENT_SID     HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Redeploy. Then open `https://www.yorkieadoptionhome.com/api/send-whatsapp` in
+a browser: it should answer `"provider":"twilio","automatic":true,
+"templated":true`. Anything less and the WhatsApp page in the dashboard says
+which piece is missing.
+
+> The sandbox is not a shortcut. Twilio's shared sandbox number requires each
+> recipient to text it a join code first, which is precisely the human step
+> this exists to remove. Use it to smoke-test the plumbing if you like, never
+> for clients.
+
+### Setting it up with Meta instead
+
+Same shape, different console: create a Meta app with the WhatsApp product,
+register the number, generate a System User token that does not expire, get a
+template approved in WhatsApp Manager, then set `WHATSAPP_PHONE_NUMBER_ID`,
+`WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_TEMPLATE_NAME`. It is free for the first
+1000 service conversations a month and cheaper after that; the cost is doing
+business verification and token management yourself.
 
 ### What the code does
 
-`server/whatsapp.ts` drives whichever provider is configured, Meta first:
+`server/whatsapp.ts` drives whichever provider is configured:
 
-| Provider            | Required variables                                                     |
-| ------------------- | ---------------------------------------------------------------------- |
-| Meta Cloud API      | `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`                    |
-| Twilio              | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`    |
+| Provider       | Required variables                                                  | Template variable        |
+| -------------- | ------------------------------------------------------------------- | ------------------------ |
+| Twilio         | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER` | `TWILIO_CONTENT_SID`     |
+| Meta Cloud API | `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`                 | `WHATSAPP_TEMPLATE_NAME` |
 
-With neither set, `/api/send-whatsapp` returns **503 `not_configured`** and the
-dashboard says so on the WhatsApp page. It does not pretend to have sent.
+When the template variable is set and the caller passed `templateParams`, the
+template is sent; otherwise plain text goes out, which only lands inside an
+open window. On the Twilio path `Body` is deliberately *omitted* when
+`ContentSid` is present — sending both makes Twilio take the free-form path and
+fail with 63016 despite the template being right there.
+
+With neither provider set, `/api/send-whatsapp` returns **503 `not_configured`**
+and the dashboard says so. It does not pretend to have sent.
 
 > The earlier version built a `wa.me` link, logged the row as `generated` and
 > returned `success: true`. Every row in the dashboard was then badged "Auto
 > Sent" with a green tick. Nothing had been sent; a human was expected to open
 > WhatsApp and press send. Migration 0011 relabels those old rows `failed`.
 
-`GET /api/send-whatsapp` reports which provider it has credentials for — the
-quickest way to check whether the variables actually reached the deployment.
+`GET /api/send-whatsapp` reports the provider **and** whether a template is
+configured, because credentials alone are the state that looks working and is
+not.
 
 ### Which channel fires
 
@@ -253,7 +340,9 @@ Set in Vercel, for Production and Preview both. See `.env.example`.
 | `RESEND_WEBHOOK_SECRET`    | yes      | Or the webhook is unauthenticated.                |
 | `ADMIN_NOTIFY_EMAILS`      | no       | Comma separated. Never `FROM_EMAIL`; that loops.  |
 | `PUBLIC_SITE_URL`          | no       | Keeps per-deploy `VERCEL_URL` out of client mail. |
-| `WHATSAPP_*` / `TWILIO_*`  | no       | Nothing delivers until one set is present.        |
+| `TWILIO_*`                 | no       | Nothing delivers until one provider set is there. |
+| `TWILIO_CONTENT_SID`       | no       | Without it, sends fail outside the 24h window.    |
+| `WHATSAPP_*`               | no       | The Meta alternative to the `TWILIO_*` set.       |
 | `DEFAULT_COUNTRY_CODE`     | no       | Defaults to `1`.                                  |
 | `SUPABASE_SERVICE_ROLE_KEY`| no       | Lets the functions log without relying on RLS.    |
 

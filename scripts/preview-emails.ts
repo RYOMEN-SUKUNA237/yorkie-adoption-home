@@ -18,7 +18,7 @@ const chrome = {
   siteName,
   siteUrl,
   contactEmail: "support@yorkieadoptionhome.com",
-  contactPhone: "+1 (218) 833-2266",
+  contactPhone: "+1 (858) 798-6768",
 };
 
 const reference = "YAH-2K91-4F7C";
